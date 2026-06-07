@@ -22,18 +22,19 @@ export const ml = {
   }).then(r => r.json()),
 
   diagnostico: (user_id, token, usuario_id, conta_ml_id) =>
-    fetch(`${API}/diagnostico/${user_id}?token=${token}&usuario_id=${usuario_id}&conta_ml_id=${conta_ml_id}`).then(r => r.json()),
+    fetch(`${API}/diagnostico/${user_id}?token=${encodeURIComponent(token)}&usuario_id=${usuario_id}&conta_ml_id=${conta_ml_id}`).then(r => r.json()),
 
   item: (item_id, token, user_id) =>
-    fetch(`${API}/item/${item_id}?token=${token}&user_id=${user_id}`).then(r => r.json()),
+    fetch(`${API}/item/${item_id}?token=${encodeURIComponent(token)}&user_id=${user_id}`).then(r => r.json()),
 
   historico: (usuario_id, conta_ml_id) =>
     fetch(`${API}/historico/${usuario_id}?conta_ml_id=${conta_ml_id}`).then(r => r.json()),
-  pagamento: {
+};
+
+export const pagamento = {
   criar: (plano, usuario_id, email, nome) => fetch(`${API}/pagamento/criar`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({plano, usuario_id, email, nome})
   }).then(r => r.json()),
-},
 };
