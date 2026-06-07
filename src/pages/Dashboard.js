@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ml, pagamento } from '../api';
 import Planos from './Planos';
+import Concorrentes from './Concorrentes';
+import Promocoes from './Promocoes';
 
 const C = {
   bg:'#0a0a12', sidebar:'#0f0f1a', card:'#13131f', border:'#1e1e2e',
@@ -12,10 +14,7 @@ const CLIENT_ID = '8361153242610469';
 const REDIRECT_URI = 'https://httpbingo.org/get';
 
 function corScore(s) { return s < 60 ? C.red : s < 80 ? C.yellow : C.green; }
-
-function isPro(usuario) {
-  return ['pro','agencia'].includes(usuario?.plano);
-}
+function isPro(u) { return ['pro','agencia'].includes(u?.plano); }
 
 function ScoreCard({ label, value }) {
   const c = corScore(value);
@@ -74,7 +73,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
     try {
       const r = await ml.connect(code.trim(), usuario.id);
       if (r.success) { onMlAuth(r); setCode(''); }
-      else alert('Código inválido. Tente novamente.');
+      else alert('Código inválido.');
     } catch { alert('Erro de conexão.'); }
     setConectando(false);
   };
@@ -92,9 +91,11 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const nivel_labels = { '5_green':'🟢 Verde', '4_light_green':'🟢 Verde claro', '3_yellow':'🟡 Amarelo', '2_orange':'🟠 Laranja', '1_red':'🔴 Vermelho' };
 
   const navItems = [
-    { id:'visao', label:'Visão geral', icon:'◉' },
-    { id:'analisar', label:'Analisar produto', icon:'⬡', pro: true },
-    { id:'calculadora', label:'Calculadora', icon:'⊞' },
+    { id:'visao', label:'Visão geral', icon:'◉', secao:'ANÁLISE' },
+    { id:'analisar', label:'Analisar produto', icon:'⬡', pro:true },
+    { id:'concorrentes', label:'Concorrentes', icon:'⊕', pro:true },
+    { id:'promocoes', label:'Promoções', icon:'🏷', pro:true },
+    { id:'calculadora', label:'Calculadora', icon:'⊞', secao:'FERRAMENTAS' },
     { id:'plano', label:'Plano de ação', icon:'☑' },
   ];
 
@@ -106,20 +107,26 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
           <div style={{ fontSize:11, color:C.muted }}>Diagnóstico ML</div>
         </div>
 
-        <div style={{ fontSize:10, color:'#444', letterSpacing:'0.08em', padding:'8px 16px 4px', textTransform:'uppercase' }}>Análise</div>
-        {navItems.map(item => (
-          <div key={item.id} onClick={() => setPagina(item.id)} style={{
-            display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 16px', cursor:'pointer', fontSize:13,
-            color: pagina===item.id ? C.green : C.muted,
-            background: pagina===item.id ? '#0d2d1a' : 'transparent',
-            borderLeft: `2px solid ${pagina===item.id ? C.green : 'transparent'}`
-          }}>
-            <span style={{ display:'flex', alignItems:'center', gap:8 }}><span>{item.icon}</span>{item.label}</span>
-            {item.pro && !isPro(usuario) && <span style={{ fontSize:9, background:C.yellow, color:'#fff', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>PRO</span>}
-          </div>
-        ))}
+        <div style={{ flex:1, overflowY:'auto' }}>
+          {navItems.map((item, idx) => (
+            <div key={item.id}>
+              {item.secao && (
+                <div style={{ fontSize:10, color:'#444', letterSpacing:'0.08em', padding:`${idx===0?'8px':'16px'} 16px 4px`, textTransform:'uppercase' }}>{item.secao}</div>
+              )}
+              <div onClick={() => setPagina(item.id)} style={{
+                display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 16px', cursor:'pointer', fontSize:13,
+                color: pagina===item.id ? C.green : C.muted,
+                background: pagina===item.id ? '#0d2d1a' : 'transparent',
+                borderLeft: `2px solid ${pagina===item.id ? C.green : 'transparent'}`
+              }}>
+                <span style={{ display:'flex', alignItems:'center', gap:8 }}><span>{item.icon}</span>{item.label}</span>
+                {item.pro && !isPro(usuario) && <span style={{ fontSize:9, background:C.yellow, color:'#fff', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>PRO</span>}
+              </div>
+            </div>
+          ))}
+        </div>
 
-        <div style={{ padding:'12px 16px', borderTop:`1px solid ${C.border}`, marginTop:'auto' }}>
+        <div style={{ padding:'12px 16px', borderTop:`1px solid ${C.border}` }}>
           {!mlAuth ? (
             <div>
               <a href={authUrl} target="_blank" rel="noreferrer" style={{ display:'block', background:C.green, color:'#fff', textAlign:'center', padding:'8px 0', borderRadius:8, fontSize:12, fontWeight:600, textDecoration:'none', marginBottom:8 }}>🔗 Autorizar ML</a>
@@ -147,9 +154,11 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
 
       <div style={{ flex:1, overflow:'auto' }}>
         {pagina === 'visao' && <VisaoGeral diagnostico={diagnostico} loading={loading} onGerar={gerarDiagnostico} mlAuth={mlAuth} nivel_labels={nivel_labels} usuario={usuario} setPagina={setPagina} />}
-        {pagina === 'analisar' && <AnalisarProduto mlAuth={mlAuth} usuario={usuario} setPagina={setPagina} />}
+        {pagina === 'analisar' && (isPro(usuario) ? <AnalisarProduto mlAuth={mlAuth} usuario={usuario} setPagina={setPagina} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de produto por MLB" />)}
+        {pagina === 'concorrentes' && (isPro(usuario) ? <Concorrentes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de concorrentes" />)}
+        {pagina === 'promocoes' && (isPro(usuario) ? <Promocoes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Módulo de promoções" />)}
         {pagina === 'calculadora' && <Calculadora />}
-        {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} usuario={usuario} setPagina={setPagina} />}
+        {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} />}
         {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} />}
       </div>
     </div>
@@ -217,13 +226,6 @@ function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels, usuar
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             {[...criticos, ...atencoes].map((a,i) => <AlertCard key={i} alerta={a} />)}
           </div>
-
-          {isPro(usuario) && r && (
-            <div style={{ marginTop:20, background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:16 }}>
-              <div style={{ fontSize:13, fontWeight:600, color:C.text, marginBottom:10 }}>📈 Evolução do score</div>
-              <div style={{ fontSize:12, color:C.muted }}>Histórico disponível após múltiplos diagnósticos.</div>
-            </div>
-          )}
         </>
       )}
     </div>
@@ -236,16 +238,12 @@ function AnalisarProduto({ mlAuth, usuario, setPagina }) {
   const [loading, setLoading] = useState(false);
   const [aba, setAba] = useState('fatores');
 
-  if (!isPro(usuario)) {
-    return <BloqueadoPro setPagina={setPagina} recurso="Análise de produto por MLB" />;
-  }
-
   const analisar = async () => {
     if (!mlb.trim() || !mlAuth) return;
     setLoading(true);
     try {
-      const mlbFormatado = mlb.trim().toUpperCase().startsWith('MLB') ? mlb.trim().toUpperCase() : `MLB${mlb.trim()}`;
-      const r = await ml.item(mlbFormatado, mlAuth.access_token, mlAuth.ml_user_id);
+      const mlbF = mlb.trim().toUpperCase().startsWith('MLB') ? mlb.trim().toUpperCase() : `MLB${mlb.trim()}`;
+      const r = await ml.item(mlbF, mlAuth.access_token, mlAuth.ml_user_id);
       setItem(r);
     } catch { alert('Erro ao analisar produto.'); }
     setLoading(false);
@@ -353,7 +351,7 @@ function PrecificacaoProduto({ item }) {
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
-        {[['CMV',cmv,setCmv,'number'],['Tipo',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime fiscal',imposto,setImposto,'select-imp'],['Margem (%)',margem,setMargem,'number']].map(([l,v,s,t]) => (
+        {[['CMV',cmv,setCmv,'number'],['Tipo',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime',imposto,setImposto,'select-imp'],['Margem (%)',margem,setMargem,'number']].map(([l,v,s,t]) => (
           <div key={l} style={{ marginBottom:10 }}>
             <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>{l}</label>
             {t==='number' && <input type="number" value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }} />}
@@ -396,7 +394,7 @@ function Calculadora() {
       <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Calcule o preço ideal com todos os custos reais do ML 2026</div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
-          {[['CMV',cmv,setCmv,'number'],['Tipo',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime fiscal',imposto,setImposto,'select-imp'],['Margem (%)',margem,setMargem,'number'],['Preço atual',precoAtual,setPrecoAtual,'number']].map(([l,v,s,t]) => (
+          {[['CMV',cmv,setCmv,'number'],['Tipo',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime',imposto,setImposto,'select-imp'],['Margem (%)',margem,setMargem,'number'],['Preço atual',precoAtual,setPrecoAtual,'number']].map(([l,v,s,t]) => (
             <div key={l} style={{ marginBottom:10 }}>
               <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>{l}</label>
               {t==='number' && <input type="number" value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }} />}
@@ -423,7 +421,7 @@ function Calculadora() {
   );
 }
 
-function PlanoAcao({ diagnostico, usuario, setPagina }) {
+function PlanoAcao({ diagnostico }) {
   if (!diagnostico) return (
     <div style={{ padding:24, textAlign:'center', color:C.muted }}>
       <div style={{ fontSize:32, marginBottom:12 }}>📋</div>
