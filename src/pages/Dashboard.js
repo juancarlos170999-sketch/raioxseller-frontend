@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ml } from '../api';
+import React, { useState } from 'react';
+import { ml, pagamento } from '../api';
 import Planos from './Planos';
 
 const C = {
@@ -121,11 +121,14 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
               ✅ {mlAuth.nickname}
             </div>
           )}
-          <div style={{ marginTop:8 }}>
+          <div style={{ marginTop:8, marginBottom:8 }}>
             <div style={{ fontSize:12, fontWeight:600, color:C.text }}>{usuario.nome || usuario.email}</div>
             <span style={{ background:planoCor[usuario.plano]||C.blue, color:'#fff', padding:'2px 8px', borderRadius:4, fontSize:10, fontWeight:600 }}>{planoLabel[usuario.plano]||'STARTER'}</span>
           </div>
-          <button onClick={onLogout} style={{ marginTop:8, width:'100%', padding:'7px 0', background:'transparent', color:C.muted, border:`1px solid ${C.border}`, borderRadius:6, fontSize:12, cursor:'pointer' }}>Sair</button>
+          <button onClick={() => setPagina('planos')} style={{ width:'100%', padding:'7px 0', background:'transparent', color:C.yellow, border:`1px solid ${C.yellow}40`, borderRadius:6, fontSize:12, cursor:'pointer', marginBottom:6 }}>
+            ⬆ Fazer upgrade
+          </button>
+          <button onClick={onLogout} style={{ width:'100%', padding:'7px 0', background:'transparent', color:C.muted, border:`1px solid ${C.border}`, borderRadius:6, fontSize:12, cursor:'pointer' }}>Sair</button>
         </div>
       </div>
 
@@ -135,6 +138,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         {pagina === 'analisar' && <AnalisarProduto mlAuth={mlAuth} usuario={usuario} />}
         {pagina === 'calculadora' && <Calculadora />}
         {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} />}
+        {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} />}
       </div>
     </div>
   );
@@ -207,7 +211,7 @@ function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels }) {
   );
 }
 
-function AnalisarProduto({ mlAuth, usuario }) {
+function AnalisarProduto({ mlAuth }) {
   const [mlb, setMlb] = useState('');
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -217,7 +221,8 @@ function AnalisarProduto({ mlAuth, usuario }) {
     if (!mlb.trim() || !mlAuth) return;
     setLoading(true);
     try {
-      const mlbFormatado = mlb.trim().toUpperCase().startsWith('MLB') ? mlb.trim().toUpperCase() : `MLB${mlb.trim()}`; const r = await ml.item(mlbFormatado, mlAuth.access_token, mlAuth.ml_user_id);
+      const mlbFormatado = mlb.trim().toUpperCase().startsWith('MLB') ? mlb.trim().toUpperCase() : `MLB${mlb.trim()}`;
+      const r = await ml.item(mlbFormatado, mlAuth.access_token, mlAuth.ml_user_id);
       setItem(r);
     } catch { alert('Erro ao analisar produto.'); }
     setLoading(false);
@@ -228,7 +233,7 @@ function AnalisarProduto({ mlAuth, usuario }) {
       <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>Analisar produto</div>
       <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Cole o MLB para diagnóstico completo</div>
       <div style={{ display:'flex', gap:8, marginBottom:20 }}>
-        <input value={mlb} onChange={e=>setMlb(e.target.value.toUpperCase())} placeholder="Ex: MLB4341336433"
+        <input value={mlb} onChange={e=>setMlb(e.target.value)} placeholder="Ex: MLB4341336433 ou 4341336433"
           style={{ flex:1, padding:'10px 14px', borderRadius:8, border:`1px solid ${C.border}`, background:C.card, color:C.text, fontSize:13 }} />
         <button onClick={analisar} disabled={loading || !mlAuth} style={{ padding:'10px 20px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:13, cursor:'pointer' }}>
           {loading ? 'Analisando...' : '🔍 Analisar'}
@@ -261,16 +266,16 @@ function AnalisarProduto({ mlAuth, usuario }) {
             ))}
           </div>
 
-          {aba === 'fatores' && (
+          {aba === 'fatores' && item.scores && (
             <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:16 }}>
-              {item.scores && Object.entries(item.scores).map(([nome, score]) => (
+              {Object.entries(item.scores).map(([nome, score]) => (
                 <div key={nome} style={{ display:'grid', gridTemplateColumns:'110px 1fr 36px', gap:12, alignItems:'center', padding:'10px 0', borderBottom:`1px solid ${C.border}` }}>
                   <div style={{ fontSize:12, fontWeight:500, textTransform:'capitalize' }}>{nome}</div>
                   <div>
                     <div style={{ height:4, background:C.border, borderRadius:2, overflow:'hidden', marginBottom:4 }}>
                       <div style={{ width:`${score}%`, height:'100%', background:corScore(score), borderRadius:2 }} />
                     </div>
-                    <div style={{ fontSize:11, color:C.muted }}>{item.acoes[nome]}</div>
+                    <div style={{ fontSize:11, color:C.muted }}>{item.acoes?.[nome] || ''}</div>
                   </div>
                   <div style={{ fontSize:13, fontWeight:700, color:corScore(score), textAlign:'right' }}>{score}</div>
                 </div>
@@ -291,7 +296,7 @@ function SimuladorAds({ item }) {
   const [estagio, setEstagio] = useState('crescimento');
   const [budget, setBudget] = useState(50);
   const roasMin = (100/margem).toFixed(1);
-  const roasRec = estagio==='novo' ? Math.max(2,roasMin-2) : estagio==='crescimento' ? Number(roasMin)+2 : Number(roasMin)+4;
+  const roasRec = estagio==='novo' ? Math.max(2, roasMin-2) : estagio==='crescimento' ? Number(roasMin)+2 : Number(roasMin)+4;
   return (
     <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
       {!item.pode_anunciar && <div style={{ background:'#2d1b1b', border:`1px solid ${C.red}40`, borderRadius:8, padding:12, color:'#f09575', fontSize:13, marginBottom:16 }}>⚠️ Não recomendado anunciar agora — resolva estoque e histórico primeiro.</div>}
@@ -329,10 +334,10 @@ function PrecificacaoProduto({ item }) {
         {[['CMV',cmv,setCmv,'number'],['Tipo',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime fiscal',imposto,setImposto,'select-imp'],['Margem (%)',margem,setMargem,'number']].map(([l,v,s,t]) => (
           <div key={l} style={{ marginBottom:10 }}>
             <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>{l}</label>
-            {t === 'number' && <input type="number" value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }} />}
-            {t === 'select-tipo' && <select value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }}><option value={0.12}>Clássico (12%)</option><option value={0.17}>Premium (17%)</option></select>}
-            {t === 'select-frete' && <select value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }}><option value={15}>Padrão (~R$15)</option><option value={0}>Full (R$0)</option><option value={8}>Flex (~R$8)</option></select>}
-            {t === 'select-imp' && <select value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }}><option value={0.06}>MEI (6%)</option><option value={0.10}>Simples (10%)</option><option value={0.15}>Lucro Presumido (15%)</option></select>}
+            {t==='number' && <input type="number" value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }} />}
+            {t==='select-tipo' && <select value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }}><option value={0.12}>Clássico (12%)</option><option value={0.17}>Premium (17%)</option></select>}
+            {t==='select-frete' && <select value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }}><option value={15}>Padrão (~R$15)</option><option value={0}>Full (R$0)</option><option value={8}>Flex (~R$8)</option></select>}
+            {t==='select-imp' && <select value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }}><option value={0.06}>MEI (6%)</option><option value={0.10}>Simples (10%)</option><option value={0.15}>Lucro Presumido (15%)</option></select>}
           </div>
         ))}
       </div>
@@ -390,7 +395,6 @@ function Calculadora() {
             </div>
           ))}
           {ma !== null && <div style={{ marginTop:12, padding:10, background:`${ma>10?C.green:ma>0?C.yellow:C.red}15`, borderRadius:6, fontSize:12, color:ma>10?C.green:ma>0?C.yellow:C.red }}>{ma>10?`✅ Margem atual: ${ma.toFixed(1)}%`:ma>0?`🟡 Margem apertada: ${ma.toFixed(1)}%`:`⚠️ Vendendo no prejuízo: ${ma.toFixed(1)}%`}</div>}
-          <div style={{ fontSize:10, color:'#444', marginTop:10 }}>📌 Comissões 2026: Clássico 11-14%, Premium 16-19%.</div>
         </div>
       </div>
     </div>
