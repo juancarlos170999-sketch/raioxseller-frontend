@@ -7,7 +7,7 @@ import Promocoes from './Promocoes';
 const C = {
   bg:'#0a0a12', sidebar:'#0f0f1a', card:'#13131f', border:'#1e1e2e',
   text:'#e2e2f0', muted:'#6b6b8a', green:'#00a650', yellow:'#f5a623',
-  red:'#e52b2b', blue:'#3b82f6', input:'#1a1a2e'
+  red:'#e52b2b', blue:'#3b82f6', input:'#1a1a2e', purple:'#7c3aed'
 };
 
 const CLIENT_ID = '8361153242610469';
@@ -15,6 +15,7 @@ const REDIRECT_URI = 'https://raioxseller-frontend.vercel.app/callback';
 
 function corScore(s) { return s < 60 ? C.red : s < 80 ? C.yellow : C.green; }
 function isPro(u) { return ['pro','agencia'].includes(u?.plano); }
+function fmt(n) { return (n||0).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0}); }
 
 function ScoreCard({ label, value }) {
   const c = corScore(value);
@@ -22,23 +23,6 @@ function ScoreCard({ label, value }) {
     <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:12, textAlign:'center' }}>
       <div style={{ fontSize:28, fontWeight:800, color:c }}>{value}</div>
       <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{label}</div>
-    </div>
-  );
-}
-
-function AlertCard({ alerta }) {
-  const critico = alerta.tipo === 'CRITICO';
-  const tc = critico ? C.red : C.yellow;
-  const tb = critico ? '#2d1b1b' : '#2d2418';
-  return (
-    <div style={{ background:tb, border:`1px solid ${tc}30`, borderRadius:10, padding:16, marginBottom:10 }}>
-      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
-        <span style={{ background:tc, color:'#fff', padding:'2px 8px', borderRadius:4, fontSize:10, fontWeight:700 }}>{critico ? 'Crítico' : 'Atenção'}</span>
-        <span style={{ fontSize:11, color:C.muted }}>{alerta.categoria}</span>
-      </div>
-      <div style={{ fontSize:13, fontWeight:600, color:C.text, marginBottom:6 }}>{alerta.mensagem}</div>
-      <div style={{ fontSize:12, color:'#a0a0c0', marginBottom:4 }}>{alerta.acao}</div>
-      <div style={{ fontSize:10, color:C.muted }}>🔖 {alerta.referencia}</div>
     </div>
   );
 }
@@ -54,6 +38,18 @@ function BloqueadoPro({ setPagina, recurso }) {
       </button>
     </div>
   );
+}
+
+function calcImpactoAlerta(alerta, receita) {
+  if (!receita) return 0;
+  const cat = alerta.categoria?.toLowerCase() || '';
+  const msg = alerta.mensagem?.toLowerCase() || '';
+  if (cat.includes('reputação') || cat.includes('reputacao')) return receita.perda_reputacao || 0;
+  if (cat.includes('operação') || cat.includes('operacao') || msg.includes('atraso')) return receita.perda_operacao || 0;
+  if (cat.includes('estoque')) return receita.perda_estoque || 0;
+  if (cat.includes('atendimento') || msg.includes('pergunta')) return receita.perda_atendimento || 0;
+  if (cat.includes('publicidade') || cat.includes('ads')) return Math.round((receita.ticket_medio || 100) * 8);
+  return Math.round((receita.ticket_medio || 100) * 3);
 }
 
 export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
@@ -158,7 +154,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         {pagina === 'concorrentes' && (isPro(usuario) ? <Concorrentes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de concorrentes" />)}
         {pagina === 'promocoes' && (isPro(usuario) ? <Promocoes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Módulo de promoções" />)}
         {pagina === 'calculadora' && <Calculadora />}
-        {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} />}
+        {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} setPagina={setPagina} />}
         {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} />}
       </div>
     </div>
@@ -167,109 +163,252 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
 
 function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels, usuario, setPagina }) {
   const r = diagnostico;
+  const receita = r?.metricas?.receita;
   const cor = !r ? C.muted : r.score_total >= 80 ? C.green : r.score_total >= 60 ? C.yellow : C.red;
-  const criticos = r ? r.alertas.filter(a => a.tipo==='CRITICO') : [];
-  const atencoes = r ? r.alertas.filter(a => a.tipo==='ATENCAO') : [];
-  const badges = [];
-  if (r?.nivel === '3_yellow') badges.push({ label:'Reputação Amarela', bg:'#2d2418', color:'#FAC775' });
-  if (r?.metricas?.estoque?.sem_full > 0) badges.push({ label:'Sem Full', bg:'#2d1b1b', color:'#f09575' });
+
+  const alertasRanqueados = r ? [...r.alertas]
+    .map(a => ({ ...a, impacto: calcImpactoAlerta(a, receita) }))
+    .sort((a, b) => b.impacto - a.impacto) : [];
+
+  const totalRecuperavel = alertasRanqueados.reduce((s, a) => s + a.impacto, 0);
+
+  const potencial = r ? Math.round(r.score_total) : 0;
+  const faturamentoAtual = receita ? Math.round((receita.ticket_medio || 0) * (receita.vendas_60d || 0) / 2) : 0;
+  const faturamentoPotencial = receita ? Math.round(faturamentoAtual + (receita.receita_perdida_estimada || 0)) : 0;
+
+  const ganhosRapidos = alertasRanqueados.filter(a => a.tipo === 'ATENCAO' && a.impacto > 0).slice(0, 3);
+
+  const oportunidades = [];
+  if (r?.metricas?.estoque?.sem_full > 0)
+    oportunidades.push({ emoji:'📦', texto:`${r.metricas.estoque.sem_full} produto(s) sem Full — ative para aumentar conversão e Buy Box` });
+  if (r?.metricas?.publicidade?.sem_ads)
+    oportunidades.push({ emoji:'📢', texto:'Nenhum produto com Product Ads ativo — ROAS médio do setor é 4x' });
+  if (r?.scores?.atendimento >= 80)
+    oportunidades.push({ emoji:'⭐', texto:'Atendimento excelente — use isso como diferencial no título dos anúncios' });
+  if (r?.nivel === '5_green' || r?.nivel === '4_light_green')
+    oportunidades.push({ emoji:'🏆', texto:'Reputação verde — você aparece antes da concorrência. Maximize estoque agora.' });
+
+  const medalhas = ['🥇','🥈','🥉','4️⃣','5️⃣'];
 
   return (
-    <div style={{ padding:24 }}>
+    <div style={{ padding:24, maxWidth:960, margin:'0 auto' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <div style={{ fontSize:20, fontWeight:700 }}>Visão geral</div>
-          <div style={{ fontSize:12, color:C.muted }}>Diagnóstico completo da sua conta</div>
+          <div style={{ fontSize:12, color:C.muted }}>Diagnóstico completo da sua conta Mercado Livre</div>
         </div>
-        <button onClick={onGerar} disabled={loading || !mlAuth} style={{ padding:'8px 20px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity: !mlAuth ? 0.5 : 1 }}>
-          {loading ? 'Analisando...' : r ? '🔄 Atualizar' : '▶ Gerar diagnóstico'}
+        <button onClick={onGerar} disabled={loading || !mlAuth} style={{ padding:'10px 22px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity:!mlAuth?0.5:1 }}>
+          {loading ? '⏳ Analisando...' : r ? '🔄 Atualizar diagnóstico' : '▶ Gerar diagnóstico'}
         </button>
       </div>
 
       {!r ? (
         <div style={{ textAlign:'center', padding:60, color:C.muted, background:C.card, borderRadius:12, border:`1px solid ${C.border}` }}>
-          <div style={{ fontSize:32, marginBottom:12 }}>🔍</div>
-          <div style={{ fontSize:14 }}>{mlAuth ? 'Clique em "Gerar diagnóstico" para analisar sua conta' : 'Conecte sua conta ML na barra lateral primeiro'}</div>
+          <div style={{ fontSize:40, marginBottom:16 }}>🔍</div>
+          <div style={{ fontSize:16, fontWeight:600, color:C.text, marginBottom:8 }}>
+            {mlAuth ? 'Pronto para analisar sua conta' : 'Conecte sua conta Mercado Livre primeiro'}
+          </div>
+          <div style={{ fontSize:13, color:C.muted }}>
+            {mlAuth ? 'Clique em "Gerar diagnóstico" e descubra quanto você pode estar perdendo por mês.' : 'Use o painel lateral para autorizar sua conta ML.'}
+          </div>
         </div>
       ) : (
         <>
-          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20, marginBottom:16 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:11, color:C.muted, marginBottom:2 }}>{r.seller} · Mercado Livre Brasil · {r.gerado_em}</div>
-                <div style={{ fontSize:20, fontWeight:700, marginBottom:6 }}>{r.seller}</div>
-                <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>{nivel_labels[r.nivel] || r.nivel} · {r.mercadolider}</div>
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                  {badges.map((b,i) => <span key={i} style={{ background:b.bg, color:b.color, padding:'3px 10px', borderRadius:4, fontSize:11, fontWeight:600 }}>{b.label}</span>)}
+          {/* HERO: RECEITA PERDIDA */}
+          {receita && receita.receita_perdida_estimada > 0 && (
+            <div style={{ background:'linear-gradient(135deg, #2d1b1b 0%, #1a0f0f 100%)', border:`2px solid ${C.red}50`, borderRadius:16, padding:28, marginBottom:20 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:16 }}>
+                <div style={{ flex:1, minWidth:260 }}>
+                  <div style={{ fontSize:11, color:'#f09575', letterSpacing:'0.08em', fontWeight:700, marginBottom:8 }}>💸 DIAGNÓSTICO DE RECEITA</div>
+                  <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1.2, marginBottom:8 }}>
+                    Você está perdendo{' '}
+                    <span style={{ color:C.red }}>R$ {fmt(receita.receita_perdida_estimada)}/mês</span>
+                  </div>
+                  <div style={{ fontSize:13, color:'#f09575', marginBottom:16 }}>
+                    Se corrigir os {alertasRanqueados.filter(a=>a.tipo==='CRITICO').length || alertasRanqueados.length} problema{alertasRanqueados.length!==1?'s':''} abaixo, sua conta pode recuperar até{' '}
+                    <strong style={{ color:'#fff' }}>
+                      {faturamentoAtual > 0 ? `${Math.round((receita.receita_perdida_estimada/faturamentoPotencial)*100)}%` : 'parte significativa'} do faturamento
+                    </strong>.
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:8 }}>
+                    {receita.perda_reputacao > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:8, padding:'10px 14px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Reputação</div>
+                        <div style={{ fontSize:15, fontWeight:700, color:C.red }}>- R${fmt(receita.perda_reputacao)}</div>
+                      </div>
+                    )}
+                    {receita.perda_operacao > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:8, padding:'10px 14px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Atrasos</div>
+                        <div style={{ fontSize:15, fontWeight:700, color:C.red }}>- R${fmt(receita.perda_operacao)}</div>
+                      </div>
+                    )}
+                    {receita.perda_estoque > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:8, padding:'10px 14px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Estoque</div>
+                        <div style={{ fontSize:15, fontWeight:700, color:C.red }}>- R${fmt(receita.perda_estoque)}</div>
+                      </div>
+                    )}
+                    {receita.perda_atendimento > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:8, padding:'10px 14px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Atendimento</div>
+                        <div style={{ fontSize:15, fontWeight:700, color:C.red }}>- R${fmt(receita.perda_atendimento)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ textAlign:'center', background:'#3d1b1b', border:`2px solid ${C.red}`, borderRadius:14, padding:'20px 28px', minWidth:150 }}>
+                  <div style={{ fontSize:11, color:'#f09575', marginBottom:6, fontWeight:600 }}>TOTAL/MÊS</div>
+                  <div style={{ fontSize:38, fontWeight:900, color:C.red, lineHeight:1 }}>R${fmt(receita.receita_perdida_estimada)}</div>
+                  <div style={{ fontSize:10, color:'#f09575', marginTop:6 }}>ticket médio R${receita.ticket_medio} · {receita.vendas_60d} vendas/60d</div>
                 </div>
               </div>
-              <div style={{ textAlign:'center', background:`${cor}15`, border:`2px solid ${cor}`, borderRadius:12, padding:'14px 22px', minWidth:90 }}>
-                <div style={{ fontSize:44, fontWeight:900, color:cor, lineHeight:1 }}>{r.score_total}</div>
-                <div style={{ fontSize:10, color:cor, fontWeight:600, marginTop:2 }}>{r.status}</div>
-              </div>
-            </div>
-          </div>
-
-          {criticos.length > 0 && (
-            <div style={{ background:'#2d1b1b', border:`1px solid ${C.red}40`, borderRadius:10, padding:'14px 18px', marginBottom:16, fontSize:13, color:'#f09575' }}>
-              ⚠️ Sua conta tem <strong>{criticos.length} problema{criticos.length>1?'s':''} crítico{criticos.length>1?'s':''}</strong> que estão reduzindo sua visibilidade e receita. <strong>Resolva hoje.</strong>
             </div>
           )}
 
+          {/* SCORE + POTENCIAL */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:20 }}>
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+                <div>
+                  <div style={{ fontSize:11, color:C.muted, marginBottom:2 }}>{r.seller} · {nivel_labels[r.nivel] || r.nivel}</div>
+                  <div style={{ fontSize:16, fontWeight:700 }}>{r.seller}</div>
+                  <div style={{ fontSize:12, color:C.muted }}>{r.mercadolider}</div>
+                </div>
+                <div style={{ textAlign:'center', background:`${cor}15`, border:`2px solid ${cor}`, borderRadius:10, padding:'10px 18px' }}>
+                  <div style={{ fontSize:38, fontWeight:900, color:cor, lineHeight:1 }}>{r.score_total}</div>
+                  <div style={{ fontSize:10, color:cor, fontWeight:600, marginTop:2 }}>{r.status}</div>
+                </div>
+              </div>
+              <div style={{ height:8, background:C.border, borderRadius:4, overflow:'hidden', marginBottom:6 }}>
+                <div style={{ width:`${potencial}%`, height:'100%', background:`linear-gradient(90deg, ${C.red}, ${C.yellow}, ${C.green})`, borderRadius:4 }} />
+              </div>
+              <div style={{ fontSize:11, color:C.muted }}>Sua conta usa <strong style={{ color:cor }}>{potencial}% do potencial</strong> do Mercado Livre</div>
+            </div>
+
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
+              <div style={{ fontSize:11, color:C.muted, marginBottom:12, fontWeight:600 }}>📈 POTENCIAL DE FATURAMENTO</div>
+              <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
+                <div style={{ flex:1, background:C.input, borderRadius:8, padding:'12px 16px', textAlign:'center' }}>
+                  <div style={{ fontSize:10, color:C.muted, marginBottom:4 }}>Faturamento atual</div>
+                  <div style={{ fontSize:18, fontWeight:800, color:C.yellow }}>R${fmt(faturamentoAtual)}<span style={{ fontSize:11, color:C.muted }}>/mês</span></div>
+                </div>
+                <div style={{ fontSize:18, color:C.muted }}>→</div>
+                <div style={{ flex:1, background:'#0d2d1a', borderRadius:8, padding:'12px 16px', textAlign:'center', border:`1px solid ${C.green}30` }}>
+                  <div style={{ fontSize:10, color:C.green, marginBottom:4 }}>Potencial estimado</div>
+                  <div style={{ fontSize:18, fontWeight:800, color:C.green }}>R${fmt(faturamentoPotencial)}<span style={{ fontSize:11, color:C.muted }}>/mês</span></div>
+                </div>
+              </div>
+              <div style={{ fontSize:11, color:C.muted }}>Estimativa com base nas métricas dos últimos 60 dias.</div>
+            </div>
+          </div>
+
+          {/* SCORES 5 CATEGORIAS */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:8, marginBottom:20 }}>
             {[['Reputação','reputacao'],['Operação','operacao'],['Estoque','estoque'],['Atendimento','atendimento'],['Publicidade','publicidade']].map(([label,key]) => (
               <ScoreCard key={key} label={label} value={r.scores[key]} />
             ))}
           </div>
-{r.metricas?.receita && r.metricas.receita.receita_perdida_estimada > 0 && (
-            <div style={{ background:'#2d1b1b', border:`1px solid ${C.red}40`, borderRadius:12, padding:20, marginBottom:16 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+
+          {/* RANKING DE PRIORIDADES */}
+          {alertasRanqueados.length > 0 && (
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20, marginBottom:20 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                 <div>
-                  <div style={{ fontSize:12, color:C.red, fontWeight:600, marginBottom:4 }}>💸 RECEITA PERDIDA ESTIMADA</div>
-                  <div style={{ fontSize:11, color:'#f09575', marginBottom:12 }}>Com base nas suas métricas dos últimos 60 dias</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                    {r.metricas.receita.perda_reputacao > 0 && (
-                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
-                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Reputação baixa</div>
-                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_reputacao.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
-                      </div>
-                    )}
-                    {r.metricas.receita.perda_operacao > 0 && (
-                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
-                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Atrasos no envio</div>
-                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_operacao.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
-                      </div>
-                    )}
-                    {r.metricas.receita.perda_estoque > 0 && (
-                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
-                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Ruptura de estoque</div>
-                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_estoque.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
-                      </div>
-                    )}
-                    {r.metricas.receita.perda_atendimento > 0 && (
-                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
-                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Atendimento</div>
-                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_atendimento.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
-                      </div>
-                    )}
-                  </div>
+                  <div style={{ fontSize:14, fontWeight:700, marginBottom:2 }}>🏆 Ranking de prioridades</div>
+                  <div style={{ fontSize:12, color:C.muted }}>Ordenado pelo maior impacto financeiro</div>
                 </div>
-                <div style={{ textAlign:'center', background:'#3d1b1b', border:`2px solid ${C.red}`, borderRadius:12, padding:'16px 24px', marginLeft:20, minWidth:140 }}>
-                  <div style={{ fontSize:11, color:'#f09575', marginBottom:4 }}>Total estimado</div>
-                  <div style={{ fontSize:32, fontWeight:900, color:C.red, lineHeight:1 }}>
-                    R${r.metricas.receita.receita_perdida_estimada.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}
-                  </div>
-                  <div style={{ fontSize:10, color:'#f09575', marginTop:4 }}>por mês</div>
-                </div>
+                <button onClick={() => setPagina('plano')} style={{ padding:'6px 14px', background:'transparent', color:C.green, border:`1px solid ${C.green}40`, borderRadius:6, fontSize:12, cursor:'pointer', fontWeight:600 }}>
+                  Ver plano de 7 dias →
+                </button>
               </div>
-              <div style={{ marginTop:12, fontSize:11, color:'#f09575', borderTop:`1px solid ${C.red}20`, paddingTop:10 }}>
-                ⚠️ Estimativa baseada no seu ticket médio de R${r.metricas.receita.ticket_medio} e {r.metricas.receita.vendas_60d} vendas nos últimos 60 dias. Resolva os problemas acima para recuperar essa receita.
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {alertasRanqueados.map((a, i) => {
+                  const critico = a.tipo === 'CRITICO';
+                  const tc = critico ? C.red : C.yellow;
+                  return (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:14, background: critico ? '#2d1b1b' : '#2d2418', border:`1px solid ${tc}30`, borderRadius:10, padding:'14px 16px' }}>
+                      <div style={{ fontSize:22, width:32, textAlign:'center', flexShrink:0 }}>{medalhas[i] || '▪'}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
+                          <span style={{ background:tc, color:'#fff', padding:'2px 8px', borderRadius:4, fontSize:10, fontWeight:700 }}>{critico ? 'Crítico' : 'Atenção'}</span>
+                          <span style={{ fontSize:11, color:C.muted }}>{a.categoria}</span>
+                        </div>
+                        <div style={{ fontSize:13, fontWeight:600, color:C.text, marginBottom:4 }}>{a.mensagem}</div>
+                        <div style={{ fontSize:12, color:'#a0a0c0' }}>{a.acao}</div>
+                      </div>
+                      {a.impacto > 0 && (
+                        <div style={{ textAlign:'center', background:`${C.green}15`, border:`1px solid ${C.green}30`, borderRadius:8, padding:'10px 16px', flexShrink:0, minWidth:110 }}>
+                          <div style={{ fontSize:10, color:C.green, marginBottom:2, fontWeight:600 }}>RECUPERAR</div>
+                          <div style={{ fontSize:16, fontWeight:800, color:C.green }}>+R${fmt(a.impacto)}</div>
+                          <div style={{ fontSize:9, color:C.muted }}>por mês</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {totalRecuperavel > 0 && (
+                <div style={{ marginTop:14, padding:'12px 16px', background:'#0d2d1a', borderRadius:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ fontSize:12, color:'#9FE1CB' }}>💰 Potencial total ao corrigir todos os problemas</div>
+                  <div style={{ fontSize:18, fontWeight:800, color:C.green }}>+R${fmt(totalRecuperavel)}/mês</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* GANHOS RÁPIDOS */}
+          {ganhosRapidos.length > 0 && (
+            <div style={{ background:C.card, border:`1px solid ${C.yellow}30`, borderRadius:12, padding:20, marginBottom:20 }}>
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>⚡ Ganhos rápidos</div>
+              <div style={{ fontSize:12, color:C.muted, marginBottom:14 }}>Ações simples que você pode fazer ainda hoje</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {ganhosRapidos.map((a, i) => (
+                  <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#2d2418', borderRadius:8, padding:'10px 14px', gap:12 }}>
+                    <div style={{ display:'flex', gap:10, alignItems:'center', flex:1 }}>
+                      <span style={{ fontSize:16 }}>⚡</span>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{a.mensagem}</div>
+                        <div style={{ fontSize:11, color:C.muted }}>{a.acao}</div>
+                      </div>
+                    </div>
+                    {a.impacto > 0 && <div style={{ fontSize:13, fontWeight:700, color:C.yellow, flexShrink:0 }}>+R${fmt(a.impacto)}/mês</div>}
+                  </div>
+                ))}
+              </div>
+              {ganhosRapidos.reduce((s,a)=>s+a.impacto,0) > 0 && (
+                <div style={{ marginTop:12, fontSize:13, color:C.yellow, fontWeight:700, textAlign:'right' }}>
+                  Potencial total: +R${fmt(ganhosRapidos.reduce((s,a)=>s+a.impacto,0))}/mês
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* OPORTUNIDADES */}
+          {oportunidades.length > 0 && (
+            <div style={{ background:C.card, border:`1px solid ${C.blue}30`, borderRadius:12, padding:20, marginBottom:20 }}>
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>🚀 Oportunidades detectadas</div>
+              <div style={{ fontSize:12, color:C.muted, marginBottom:14 }}>Ações de crescimento identificadas na sua conta</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {oportunidades.map((o, i) => (
+                  <div key={i} style={{ background:'#0f1a2d', border:`1px solid ${C.blue}30`, borderRadius:8, padding:'12px 14px', display:'flex', gap:10, alignItems:'flex-start' }}>
+                    <span style={{ fontSize:18, flexShrink:0 }}>{o.emoji}</span>
+                    <div style={{ fontSize:12, color:'#a0b8e0', lineHeight:1.5 }}>{o.texto}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
-          <div style={{ fontSize:12, fontWeight:600, color:C.muted, letterSpacing:'0.06em', marginBottom:10 }}>PROBLEMAS ENCONTRADOS</div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            {[...criticos, ...atencoes].map((a,i) => <AlertCard key={i} alerta={a} />)}
+
+          {/* CTA PLANO DE AÇÃO */}
+          <div style={{ background:'linear-gradient(135deg, #0d2d1a, #0a1f12)', border:`1px solid ${C.green}40`, borderRadius:12, padding:20, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16 }}>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>📋 Pronto para agir?</div>
+              <div style={{ fontSize:12, color:'#9FE1CB' }}>Veja o plano de recuperação de 7 dias com as ações priorizadas por impacto.</div>
+            </div>
+            <button onClick={() => setPagina('plano')} style={{ padding:'10px 22px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+              Ver plano de 7 dias →
+            </button>
           </div>
         </>
       )}
@@ -466,28 +605,90 @@ function Calculadora() {
   );
 }
 
-function PlanoAcao({ diagnostico }) {
+function PlanoAcao({ diagnostico, setPagina }) {
   if (!diagnostico) return (
     <div style={{ padding:24, textAlign:'center', color:C.muted }}>
-      <div style={{ fontSize:32, marginBottom:12 }}>📋</div>
-      <div>Gere o diagnóstico primeiro na Visão Geral.</div>
+      <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
+      <div style={{ fontSize:14, marginBottom:16 }}>Gere o diagnóstico primeiro na Visão Geral.</div>
+      <button onClick={() => setPagina('visao')} style={{ padding:'10px 22px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        Ir para Visão Geral →
+      </button>
     </div>
   );
-  const criticos = diagnostico.alertas.filter(a=>a.tipo==='CRITICO');
-  const atencoes = diagnostico.alertas.filter(a=>a.tipo==='ATENCAO');
+
+  const receita = diagnostico?.metricas?.receita;
+  const alertasRanqueados = [...diagnostico.alertas]
+    .map(a => ({ ...a, impacto: calcImpactoAlerta(a, receita) }))
+    .sort((a, b) => b.impacto - a.impacto);
+
+  const totalImpacto = alertasRanqueados.reduce((s, a) => s + a.impacto, 0);
+
+  const criticos = alertasRanqueados.filter(a => a.tipo === 'CRITICO');
+  const atencoes = alertasRanqueados.filter(a => a.tipo === 'ATENCAO');
+
+  const dias = [];
+  let diaAtual = 1;
+  [...criticos, ...atencoes].forEach((a, i) => {
+    if (diaAtual > 7) return;
+    const diaLabel = diaAtual === 1 ? 'Dia 1 — Hoje' : diaAtual === 2 ? 'Dia 2 — Amanhã' : `Dia ${diaAtual}`;
+    dias.push({ dia: diaLabel, alerta: a, critico: a.tipo === 'CRITICO' });
+    diaAtual += i < criticos.length ? 1 : 2;
+  });
+
   return (
-    <div style={{ padding:24 }}>
-      <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>Plano de ação</div>
-      <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Baseado no diagnóstico de {diagnostico.gerado_em}</div>
-      {criticos.length > 0 && <>
-        <div style={{ fontSize:13, fontWeight:700, color:C.red, marginBottom:10 }}>🔴 Faça hoje</div>
-        {criticos.map((a,i) => <AlertCard key={i} alerta={a} />)}
-      </>}
-      {atencoes.length > 0 && <>
-        <div style={{ fontSize:13, fontWeight:700, color:C.yellow, margin:'20px 0 10px' }}>🟡 Esta semana</div>
-        {atencoes.map((a,i) => <AlertCard key={i} alerta={a} />)}
-      </>}
-      {criticos.length===0 && atencoes.length===0 && <div style={{ background:'#0d2d1a', border:`1px solid ${C.green}`, borderRadius:10, padding:20, textAlign:'center', color:'#9FE1CB' }}>🎉 Operação saudável! Continue monitorando.</div>}
+    <div style={{ padding:24, maxWidth:760, margin:'0 auto' }}>
+      <div style={{ fontSize:20, fontWeight:700, marginBottom:4 }}>📋 Plano de recuperação</div>
+      <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Baseado no diagnóstico de {diagnostico.gerado_em} · ordenado por impacto financeiro</div>
+
+      {totalImpacto > 0 && (
+        <div style={{ background:'linear-gradient(135deg, #0d2d1a, #0a1f12)', border:`1px solid ${C.green}40`, borderRadius:12, padding:20, marginBottom:24, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ fontSize:13, color:'#9FE1CB', marginBottom:4 }}>Se executar este plano em 7 dias:</div>
+            <div style={{ fontSize:22, fontWeight:900, color:C.green }}>+R${fmt(totalImpacto)}/mês estimado de recuperação</div>
+          </div>
+          <div style={{ fontSize:40 }}>🎯</div>
+        </div>
+      )}
+
+      <div style={{ position:'relative' }}>
+        <div style={{ position:'absolute', left:19, top:0, bottom:0, width:2, background:C.border }} />
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          {dias.map((d, i) => (
+            <div key={i} style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
+              <div style={{ width:40, height:40, borderRadius:'50%', background: d.critico ? C.red : C.yellow, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, zIndex:1, border:`3px solid ${C.bg}` }}>
+                {i+1}
+              </div>
+              <div style={{ flex:1, background:C.card, border:`1px solid ${d.critico ? C.red+'40' : C.yellow+'40'}`, borderRadius:10, padding:'14px 16px', marginTop:4 }}>
+                <div style={{ fontSize:11, color: d.critico ? C.red : C.yellow, fontWeight:700, marginBottom:6 }}>{d.dia} · {d.critico ? '🔴 Crítico' : '🟡 Atenção'}</div>
+                <div style={{ fontSize:14, fontWeight:600, color:C.text, marginBottom:6 }}>{d.alerta.mensagem}</div>
+                <div style={{ fontSize:12, color:'#a0a0c0', marginBottom: d.alerta.impacto > 0 ? 10 : 0 }}>{d.alerta.acao}</div>
+                {d.alerta.impacto > 0 && (
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:`${C.green}15`, border:`1px solid ${C.green}30`, borderRadius:6, padding:'4px 10px' }}>
+                    <span style={{ fontSize:11, color:C.green, fontWeight:600 }}>Impacto estimado: +R${fmt(d.alerta.impacto)}/mês</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <div style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
+            <div style={{ width:40, height:40, borderRadius:'50%', background:C.green, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0, zIndex:1, border:`3px solid ${C.bg}` }}>
+              ✓
+            </div>
+            <div style={{ flex:1, background:'#0d2d1a', border:`1px solid ${C.green}40`, borderRadius:10, padding:'14px 16px', marginTop:4 }}>
+              <div style={{ fontSize:11, color:C.green, fontWeight:700, marginBottom:6 }}>Dia 7 — Verificação</div>
+              <div style={{ fontSize:14, fontWeight:600, color:C.text, marginBottom:4 }}>Atualize o diagnóstico e confirme a recuperação</div>
+              <div style={{ fontSize:12, color:'#9FE1CB' }}>Volte aqui e clique em "Atualizar diagnóstico" para ver o novo score e o impacto das correções.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {criticos.length === 0 && atencoes.length === 0 && (
+        <div style={{ background:'#0d2d1a', border:`1px solid ${C.green}`, borderRadius:10, padding:20, textAlign:'center', color:'#9FE1CB' }}>
+          🎉 Operação saudável! Continue monitorando.
+        </div>
+      )}
     </div>
   );
 }
