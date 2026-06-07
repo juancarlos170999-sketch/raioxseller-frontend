@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ml } from '../api';
+import Planos from './Planos';
 
 const C = {
   bg:'#0a0a12', sidebar:'#0f0f1a', card:'#13131f', border:'#1e1e2e',
