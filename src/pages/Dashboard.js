@@ -262,7 +262,7 @@ function AnalisarProduto({ mlAuth, usuario }) {
 
           {aba === 'fatores' && (
             <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:16 }}>
-              {Object.entries(item.scores).map(([nome, score]) => (
+              {item.scores && Object.entries(item.scores).map(([nome, score]) => (
                 <div key={nome} style={{ display:'grid', gridTemplateColumns:'110px 1fr 36px', gap:12, alignItems:'center', padding:'10px 0', borderBottom:`1px solid ${C.border}` }}>
                   <div style={{ fontSize:12, fontWeight:500, textTransform:'capitalize' }}>{nome}</div>
                   <div>
