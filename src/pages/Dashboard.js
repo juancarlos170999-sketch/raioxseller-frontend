@@ -221,7 +221,52 @@ function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels, usuar
               <ScoreCard key={key} label={label} value={r.scores[key]} />
             ))}
           </div>
-
+{r.metricas?.receita && r.metricas.receita.receita_perdida_estimada > 0 && (
+            <div style={{ background:'#2d1b1b', border:`1px solid ${C.red}40`, borderRadius:12, padding:20, marginBottom:16 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div>
+                  <div style={{ fontSize:12, color:C.red, fontWeight:600, marginBottom:4 }}>💸 RECEITA PERDIDA ESTIMADA</div>
+                  <div style={{ fontSize:11, color:'#f09575', marginBottom:12 }}>Com base nas suas métricas dos últimos 60 dias</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    {r.metricas.receita.perda_reputacao > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Reputação baixa</div>
+                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_reputacao.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
+                      </div>
+                    )}
+                    {r.metricas.receita.perda_operacao > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Atrasos no envio</div>
+                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_operacao.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
+                      </div>
+                    )}
+                    {r.metricas.receita.perda_estoque > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Ruptura de estoque</div>
+                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_estoque.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
+                      </div>
+                    )}
+                    {r.metricas.receita.perda_atendimento > 0 && (
+                      <div style={{ background:'#3d1b1b', borderRadius:6, padding:'8px 12px' }}>
+                        <div style={{ fontSize:10, color:'#f09575', marginBottom:2 }}>Atendimento</div>
+                        <div style={{ fontSize:14, fontWeight:700, color:C.red }}>- R${r.metricas.receita.perda_atendimento.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}/mês</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ textAlign:'center', background:'#3d1b1b', border:`2px solid ${C.red}`, borderRadius:12, padding:'16px 24px', marginLeft:20, minWidth:140 }}>
+                  <div style={{ fontSize:11, color:'#f09575', marginBottom:4 }}>Total estimado</div>
+                  <div style={{ fontSize:32, fontWeight:900, color:C.red, lineHeight:1 }}>
+                    R${r.metricas.receita.receita_perdida_estimada.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}
+                  </div>
+                  <div style={{ fontSize:10, color:'#f09575', marginTop:4 }}>por mês</div>
+                </div>
+              </div>
+              <div style={{ marginTop:12, fontSize:11, color:'#f09575', borderTop:`1px solid ${C.red}20`, paddingTop:10 }}>
+                ⚠️ Estimativa baseada no seu ticket médio de R${r.metricas.receita.ticket_medio} e {r.metricas.receita.vendas_60d} vendas nos últimos 60 dias. Resolva os problemas acima para recuperar essa receita.
+              </div>
+            </div>
+          )}
           <div style={{ fontSize:12, fontWeight:600, color:C.muted, letterSpacing:'0.06em', marginBottom:10 }}>PROBLEMAS ENCONTRADOS</div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             {[...criticos, ...atencoes].map((a,i) => <AlertCard key={i} alerta={a} />)}
