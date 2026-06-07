@@ -29,4 +29,11 @@ export const ml = {
 
   historico: (usuario_id, conta_ml_id) =>
     fetch(`${API}/historico/${usuario_id}?conta_ml_id=${conta_ml_id}`).then(r => r.json()),
+  pagamento: {
+  criar: (plano, usuario_id, email, nome) => fetch(`${API}/pagamento/criar`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({plano, usuario_id, email, nome})
+  }).then(r => r.json()),
+},
 };
