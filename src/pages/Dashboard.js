@@ -216,7 +216,7 @@ function AnalisarProduto({ mlAuth, usuario }) {
     if (!mlb.trim() || !mlAuth) return;
     setLoading(true);
     try {
-      const r = await ml.item(mlb.trim().toUpperCase(), mlAuth.access_token, mlAuth.ml_user_id);
+      const mlbFormatado = mlb.trim().toUpperCase().startsWith('MLB') ? mlb.trim().toUpperCase() : `MLB${mlb.trim()}`; const r = await ml.item(mlbFormatado, mlAuth.access_token, mlAuth.ml_user_id);
       setItem(r);
     } catch { alert('Erro ao analisar produto.'); }
     setLoading(false);
