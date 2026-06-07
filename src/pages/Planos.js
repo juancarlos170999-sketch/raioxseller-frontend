@@ -55,9 +55,14 @@ const PLANOS = [
   }
 ];
 
-export default function Planos({ usuario, onVoltar }) {
+export default function Planos({ usuario, onVoltar, onAtualizarUsuario }) {
   const [loading, setLoading] = useState(null);
   const [erro, setErro] = useState('');
+  const [cancelando, setCancelando] = useState(false);
+  const [confirmaCancelamento, setConfirmaCancelamento] = useState(false);
+
+  const planoAtual = usuario.plano;
+  const temPlano = ['pro', 'agencia'].includes(planoAtual);
 
   const assinar = async (plano_id) => {
     setLoading(plano_id);
@@ -73,6 +78,24 @@ export default function Planos({ usuario, onVoltar }) {
       setErro('Erro de conexão. Tente novamente.');
     }
     setLoading(null);
+  };
+
+  const cancelarPlano = async () => {
+    setCancelando(true);
+    try {
+      const r = await pagamento.cancelar(usuario.id);
+      if (r.success) {
+        setConfirmaCancelamento(false);
+        if (onAtualizarUsuario) onAtualizarUsuario({ ...usuario, plano: 'starter' });
+        alert('Assinatura cancelada. Seu acesso foi rebaixado para o plano Starter.');
+        onVoltar();
+      } else {
+        setErro(r.detail || 'Erro ao cancelar. Entre em contato com o suporte.');
+      }
+    } catch {
+      setErro('Erro de conexão. Tente novamente.');
+    }
+    setCancelando(false);
   };
 
   return (
@@ -137,6 +160,36 @@ export default function Planos({ usuario, onVoltar }) {
       <div style={{ textAlign:'center', marginTop:24, fontSize:12, color:C.muted }}>
         Pagamento processado com segurança pelo Mercado Pago · Cancele quando quiser
       </div>
+
+      {/* CANCELAMENTO */}
+      {temPlano && !confirmaCancelamento && (
+        <div style={{ maxWidth:900, margin:'32px auto 0', padding:'16px 20px', background:'#13131f', border:'1px solid #1e1e2e', borderRadius:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ fontSize:13, color:C.muted }}>Quer cancelar sua assinatura?</div>
+            <div style={{ fontSize:11, color:'#444', marginTop:2 }}>Você terá acesso até o fim do período pago.</div>
+          </div>
+          <button onClick={() => setConfirmaCancelamento(true)} style={{ padding:'8px 18px', background:'transparent', color:'#e52b2b', border:'1px solid #e52b2b40', borderRadius:6, fontSize:12, cursor:'pointer', fontWeight:600 }}>
+            Cancelar assinatura
+          </button>
+        </div>
+      )}
+
+      {confirmaCancelamento && (
+        <div style={{ maxWidth:900, margin:'32px auto 0', padding:'20px 24px', background:'#2d1b1b', border:'1px solid #e52b2b40', borderRadius:10 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'#f09575', marginBottom:8 }}>⚠️ Confirmar cancelamento</div>
+          <div style={{ fontSize:13, color:'#f09575', marginBottom:16 }}>
+            Tem certeza? Você perderá acesso às funcionalidades Pro/Agência e voltará para o plano Starter.
+          </div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={cancelarPlano} disabled={cancelando} style={{ padding:'9px 20px', background:'#e52b2b', color:'#fff', border:'none', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              {cancelando ? 'Cancelando...' : 'Sim, cancelar'}
+            </button>
+            <button onClick={() => setConfirmaCancelamento(false)} style={{ padding:'9px 20px', background:'transparent', color:C.muted, border:'1px solid #1e1e2e', borderRadius:6, fontSize:13, cursor:'pointer' }}>
+              Voltar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

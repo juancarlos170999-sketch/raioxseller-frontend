@@ -6,9 +6,9 @@ export const auth = {
     body: JSON.stringify({email, senha})
   }).then(r => r.json()),
 
-  register: (email, senha, nome, plano) => fetch(`${API}/auth/register`, {
+  register: (email, senha, nome, plano, whatsapp) => fetch(`${API}/auth/register`, {
     method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({email, senha, nome, plano})
+    body: JSON.stringify({email, senha, nome, plano, whatsapp})
   }).then(r => r.json()),
 };
 
@@ -38,5 +38,10 @@ export const pagamento = {
   criar: (plano, usuario_id, email, nome) => fetch(`${API}/pagamento/criar`, {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({plano, usuario_id, email, nome})
+  }).then(r => r.json()),
+
+  cancelar: (usuario_id) => fetch(`${API}/pagamento/cancelar`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({usuario_id})
   }).then(r => r.json()),
 };

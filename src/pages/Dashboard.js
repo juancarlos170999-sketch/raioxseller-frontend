@@ -155,7 +155,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         {pagina === 'promocoes' && (isPro(usuario) ? <Promocoes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Módulo de promoções" />)}
         {pagina === 'calculadora' && <Calculadora />}
         {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} setPagina={setPagina} />}
-        {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} />}
+        {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} onAtualizarUsuario={(u) => { localStorage.setItem('usuario', JSON.stringify(u)); window.location.reload(); }} />}
       </div>
     </div>
   );

@@ -12,17 +12,19 @@ export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [nome, setNome] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [plano, setPlano] = useState('starter');
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !senha) { setErro('Preencha email e senha.'); return; }
+    if (aba === 'cadastrar' && !nome) { setErro('Preencha seu nome.'); return; }
     setLoading(true); setErro('');
     try {
       const r = aba === 'entrar'
         ? await auth.login(email, senha)
-        : await auth.register(email, senha, nome, plano);
+        : await auth.register(email, senha, nome, plano, whatsapp);
       if (r.success) {
         if (aba === 'entrar') onLogin(r.usuario);
         else { setErro(''); setAba('entrar'); alert('Conta criada! Faça login.'); }
@@ -50,8 +52,12 @@ export default function Login({ onLogin }) {
         </div>
 
         {aba === 'cadastrar' && (
-          <input value={nome} onChange={e=>setNome(e.target.value)} placeholder="Seu nome"
-            style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:13, marginBottom:10, boxSizing:'border-box' }} />
+          <>
+            <input value={nome} onChange={e=>setNome(e.target.value)} placeholder="Seu nome *"
+              style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:13, marginBottom:10, boxSizing:'border-box' }} />
+            <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} placeholder="WhatsApp (ex: 11999999999)"
+              style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:13, marginBottom:10, boxSizing:'border-box' }} />
+          </>
         )}
         <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@email.com" type="email"
           style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:13, marginBottom:10, boxSizing:'border-box' }} />
