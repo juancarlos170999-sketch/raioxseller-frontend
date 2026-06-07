@@ -11,7 +11,7 @@ const C = {
 };
 
 const CLIENT_ID = '8361153242610469';
-const REDIRECT_URI = 'https://httpbingo.org/get';
+const REDIRECT_URI = 'https://raioxseller-frontend.vercel.app/callback';
 
 function corScore(s) { return s < 60 ? C.red : s < 80 ? C.yellow : C.green; }
 function isPro(u) { return ['pro','agencia'].includes(u?.plano); }
