@@ -13,6 +13,10 @@ const REDIRECT_URI = 'https://httpbingo.org/get';
 
 function corScore(s) { return s < 60 ? C.red : s < 80 ? C.yellow : C.green; }
 
+function isPro(usuario) {
+  return ['pro','agencia'].includes(usuario?.plano);
+}
+
 function ScoreCard({ label, value }) {
   const c = corScore(value);
   return (
@@ -40,6 +44,19 @@ function AlertCard({ alerta }) {
   );
 }
 
+function BloqueadoPro({ setPagina, recurso }) {
+  return (
+    <div style={{ padding:60, textAlign:'center' }}>
+      <div style={{ fontSize:40, marginBottom:16 }}>🔒</div>
+      <div style={{ fontSize:18, fontWeight:700, color:C.text, marginBottom:8 }}>Recurso exclusivo Pro</div>
+      <div style={{ fontSize:13, color:C.muted, marginBottom:24 }}>{recurso} está disponível no plano Pro e Agência.</div>
+      <button onClick={() => setPagina('planos')} style={{ padding:'12px 28px', background:C.yellow, color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:14, cursor:'pointer' }}>
+        ⬆ Fazer upgrade para Pro — R$197/mês
+      </button>
+    </div>
+  );
+}
+
 export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [pagina, setPagina] = useState('visao');
   const [diagnostico, setDiagnostico] = useState(null);
@@ -48,8 +65,8 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [conectando, setConectando] = useState(false);
 
   const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-  const planoLabel = { starter:'STARTER', pro:'PRO', agencia:'AGÊNCIA' };
-  const planoCor = { starter:C.blue, pro:C.yellow, agencia:C.green };
+  const planoLabel = { starter:'STARTER', pro:'PRO', agencia:'AGÊNCIA', iniciante:'STARTER' };
+  const planoCor = { starter:C.blue, pro:C.yellow, agencia:C.green, iniciante:C.blue };
 
   const conectarML = async () => {
     if (!code.trim()) return;
@@ -76,15 +93,13 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
 
   const navItems = [
     { id:'visao', label:'Visão geral', icon:'◉' },
-    { id:'analisar', label:'Analisar produto', icon:'⬡' },
+    { id:'analisar', label:'Analisar produto', icon:'⬡', pro: true },
     { id:'calculadora', label:'Calculadora', icon:'⊞' },
     { id:'plano', label:'Plano de ação', icon:'☑' },
   ];
 
   return (
     <div style={{ display:'flex', height:'100vh', background:C.bg, fontFamily:'Inter, sans-serif', color:C.text }}>
-      
-      {/* SIDEBAR */}
       <div style={{ width:220, background:C.sidebar, borderRight:`1px solid ${C.border}`, display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div style={{ padding:'20px 16px 12px', borderBottom:`1px solid ${C.border}`, marginBottom:8 }}>
           <div style={{ fontSize:15, fontWeight:700 }}>🔍 RaioxSeller</div>
@@ -94,27 +109,25 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         <div style={{ fontSize:10, color:'#444', letterSpacing:'0.08em', padding:'8px 16px 4px', textTransform:'uppercase' }}>Análise</div>
         {navItems.map(item => (
           <div key={item.id} onClick={() => setPagina(item.id)} style={{
-            display:'flex', alignItems:'center', gap:8, padding:'9px 16px', cursor:'pointer', fontSize:13,
+            display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 16px', cursor:'pointer', fontSize:13,
             color: pagina===item.id ? C.green : C.muted,
             background: pagina===item.id ? '#0d2d1a' : 'transparent',
             borderLeft: `2px solid ${pagina===item.id ? C.green : 'transparent'}`
           }}>
-            <span>{item.icon}</span>{item.label}
+            <span style={{ display:'flex', alignItems:'center', gap:8 }}><span>{item.icon}</span>{item.label}</span>
+            {item.pro && !isPro(usuario) && <span style={{ fontSize:9, background:C.yellow, color:'#fff', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>PRO</span>}
           </div>
         ))}
 
         <div style={{ padding:'12px 16px', borderTop:`1px solid ${C.border}`, marginTop:'auto' }}>
           {!mlAuth ? (
             <div>
-              <a href={authUrl} target="_blank" rel="noreferrer" style={{
-                display:'block', background:C.green, color:'#fff', textAlign:'center', padding:'8px 0',
-                borderRadius:8, fontSize:12, fontWeight:600, textDecoration:'none', marginBottom:8
-              }}>🔗 Autorizar ML</a>
+              <a href={authUrl} target="_blank" rel="noreferrer" style={{ display:'block', background:C.green, color:'#fff', textAlign:'center', padding:'8px 0', borderRadius:8, fontSize:12, fontWeight:600, textDecoration:'none', marginBottom:8 }}>🔗 Autorizar ML</a>
               <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Cole o código TG-..."
                 style={{ width:'100%', padding:'6px 8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:11, boxSizing:'border-box', marginBottom:6 }} />
-              <button onClick={conectarML} disabled={conectando} style={{
-                width:'100%', padding:'7px 0', background:C.green, color:'#fff', border:'none', borderRadius:6, fontSize:12, fontWeight:600, cursor:'pointer'
-              }}>{conectando ? 'Conectando...' : 'Conectar'}</button>
+              <button onClick={conectarML} disabled={conectando} style={{ width:'100%', padding:'7px 0', background:C.green, color:'#fff', border:'none', borderRadius:6, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                {conectando ? 'Conectando...' : 'Conectar'}
+              </button>
             </div>
           ) : (
             <div style={{ background:'#0d2d1a', border:`1px solid ${C.green}`, borderRadius:8, padding:'8px 12px', fontSize:12, color:'#9FE1CB', marginBottom:8 }}>
@@ -132,19 +145,18 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         </div>
       </div>
 
-      {/* CONTEÚDO */}
       <div style={{ flex:1, overflow:'auto' }}>
-        {pagina === 'visao' && <VisaoGeral diagnostico={diagnostico} loading={loading} onGerar={gerarDiagnostico} mlAuth={mlAuth} nivel_labels={nivel_labels} />}
-        {pagina === 'analisar' && <AnalisarProduto mlAuth={mlAuth} usuario={usuario} />}
+        {pagina === 'visao' && <VisaoGeral diagnostico={diagnostico} loading={loading} onGerar={gerarDiagnostico} mlAuth={mlAuth} nivel_labels={nivel_labels} usuario={usuario} setPagina={setPagina} />}
+        {pagina === 'analisar' && <AnalisarProduto mlAuth={mlAuth} usuario={usuario} setPagina={setPagina} />}
         {pagina === 'calculadora' && <Calculadora />}
-        {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} />}
+        {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} usuario={usuario} setPagina={setPagina} />}
         {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} />}
       </div>
     </div>
   );
 }
 
-function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels }) {
+function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels, usuario, setPagina }) {
   const r = diagnostico;
   const cor = !r ? C.muted : r.score_total >= 80 ? C.green : r.score_total >= 60 ? C.yellow : C.red;
   const criticos = r ? r.alertas.filter(a => a.tipo==='CRITICO') : [];
@@ -160,9 +172,9 @@ function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels }) {
           <div style={{ fontSize:20, fontWeight:700 }}>Visão geral</div>
           <div style={{ fontSize:12, color:C.muted }}>Diagnóstico completo da sua conta</div>
         </div>
-        <button onClick={onGerar} disabled={loading || !mlAuth} style={{
-          padding:'8px 20px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity: !mlAuth ? 0.5 : 1
-        }}>{loading ? 'Analisando...' : r ? '🔄 Atualizar' : '▶ Gerar diagnóstico'}</button>
+        <button onClick={onGerar} disabled={loading || !mlAuth} style={{ padding:'8px 20px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity: !mlAuth ? 0.5 : 1 }}>
+          {loading ? 'Analisando...' : r ? '🔄 Atualizar' : '▶ Gerar diagnóstico'}
+        </button>
       </div>
 
       {!r ? (
@@ -205,17 +217,28 @@ function VisaoGeral({ diagnostico, loading, onGerar, mlAuth, nivel_labels }) {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             {[...criticos, ...atencoes].map((a,i) => <AlertCard key={i} alerta={a} />)}
           </div>
+
+          {isPro(usuario) && r && (
+            <div style={{ marginTop:20, background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:16 }}>
+              <div style={{ fontSize:13, fontWeight:600, color:C.text, marginBottom:10 }}>📈 Evolução do score</div>
+              <div style={{ fontSize:12, color:C.muted }}>Histórico disponível após múltiplos diagnósticos.</div>
+            </div>
+          )}
         </>
       )}
     </div>
   );
 }
 
-function AnalisarProduto({ mlAuth }) {
+function AnalisarProduto({ mlAuth, usuario, setPagina }) {
   const [mlb, setMlb] = useState('');
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(false);
   const [aba, setAba] = useState('fatores');
+
+  if (!isPro(usuario)) {
+    return <BloqueadoPro setPagina={setPagina} recurso="Análise de produto por MLB" />;
+  }
 
   const analisar = async () => {
     if (!mlb.trim() || !mlAuth) return;
@@ -282,7 +305,6 @@ function AnalisarProduto({ mlAuth }) {
               ))}
             </div>
           )}
-
           {aba === 'ads' && <SimuladorAds item={item} />}
           {aba === 'preco' && <PrecificacaoProduto item={item} />}
         </>
@@ -299,7 +321,7 @@ function SimuladorAds({ item }) {
   const roasRec = estagio==='novo' ? Math.max(2, roasMin-2) : estagio==='crescimento' ? Number(roasMin)+2 : Number(roasMin)+4;
   return (
     <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
-      {!item.pode_anunciar && <div style={{ background:'#2d1b1b', border:`1px solid ${C.red}40`, borderRadius:8, padding:12, color:'#f09575', fontSize:13, marginBottom:16 }}>⚠️ Não recomendado anunciar agora — resolva estoque e histórico primeiro.</div>}
+      {!item.pode_anunciar && <div style={{ background:'#2d1b1b', border:`1px solid ${C.red}40`, borderRadius:8, padding:12, color:'#f09575', fontSize:13, marginBottom:16 }}>⚠️ Não recomendado anunciar agora.</div>}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:16 }}>
         <div><label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>Margem (%)</label><input type="number" value={margem} onChange={e=>setMargem(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }} /></div>
         <div><label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>Estágio</label><select value={estagio} onChange={e=>setEstagio(e.target.value)} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }}><option value="novo">Novo</option><option value="crescimento">Crescimento</option><option value="consolidado">Consolidado</option></select></div>
@@ -374,7 +396,7 @@ function Calculadora() {
       <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Calcule o preço ideal com todos os custos reais do ML 2026</div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
-          {[['CMV (custo do produto)',cmv,setCmv,'number'],['Tipo de anúncio',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime fiscal',imposto,setImposto,'select-imp'],['Margem desejada (%)',margem,setMargem,'number'],['Preço atual (opcional)',precoAtual,setPrecoAtual,'number']].map(([l,v,s,t]) => (
+          {[['CMV',cmv,setCmv,'number'],['Tipo',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime fiscal',imposto,setImposto,'select-imp'],['Margem (%)',margem,setMargem,'number'],['Preço atual',precoAtual,setPrecoAtual,'number']].map(([l,v,s,t]) => (
             <div key={l} style={{ marginBottom:10 }}>
               <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>{l}</label>
               {t==='number' && <input type="number" value={v} onChange={e=>s(Number(e.target.value))} style={{ width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' }} />}
@@ -401,7 +423,7 @@ function Calculadora() {
   );
 }
 
-function PlanoAcao({ diagnostico }) {
+function PlanoAcao({ diagnostico, usuario, setPagina }) {
   if (!diagnostico) return (
     <div style={{ padding:24, textAlign:'center', color:C.muted }}>
       <div style={{ fontSize:32, marginBottom:12 }}>📋</div>
