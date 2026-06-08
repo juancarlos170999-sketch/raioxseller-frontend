@@ -32,10 +32,10 @@ function BloqueadoPro({ setPagina, recurso }) {
   return (
     <div style={{ padding:60, textAlign:'center' }}>
       <div style={{ fontSize:40, marginBottom:16 }}>🔒</div>
-      <div style={{ fontSize:18, fontWeight:700, color:C.text, marginBottom:8 }}>Recurso exclusivo Pro</div>
-      <div style={{ fontSize:13, color:C.muted, marginBottom:24 }}>{recurso} está disponível no plano Pro e Agência.</div>
-      <button onClick={() => setPagina('planos')} style={{ padding:'12px 28px', background:C.yellow, color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:14, cursor:'pointer' }}>
-        ⬆ Fazer upgrade para Pro — R$197/mês
+      <div style={{ fontSize:18, fontWeight:700, color:C.text, marginBottom:8 }}>Recurso exclusivo Líder Gold</div>
+      <div style={{ fontSize:13, color:C.muted, marginBottom:24 }}>{recurso} está disponível nos planos Líder Gold e Líder Platinum.</div>
+      <button onClick={() => setPagina('planos')} style={{ padding:'12px 28px', background:'#d4a017', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:14, cursor:'pointer' }}>
+        ⬆ Fazer upgrade para Líder Gold — R$197/mês
       </button>
     </div>
   );
@@ -64,8 +64,8 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const isMobile = useIsMobile();
 
   const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=offline_access%20questions`;
-  const planoLabel = { starter:'STARTER', pro:'PRO', agencia:'AGÊNCIA', iniciante:'STARTER' };
-  const planoCor = { starter:C.blue, pro:C.yellow, agencia:C.green, iniciante:C.blue };
+  const planoLabel = { starter:'LÍDER', pro:'LÍDER GOLD', agencia:'LÍDER PLATINUM', iniciante:'LÍDER' };
+  const planoCor = { starter:C.blue, pro:'#d4a017', agencia:'#a8b8c8', iniciante:C.blue };
 
   const conectarML = async () => {
     if (!code.trim()) return;
@@ -175,7 +175,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
               <div style={{ fontSize:12, fontWeight:600, color:C.text }}>{usuario.nome || usuario.email}</div>
               <span style={{ background:planoCor[usuario.plano]||C.blue, color:'#fff', padding:'2px 8px', borderRadius:4, fontSize:10, fontWeight:600 }}>{planoLabel[usuario.plano]||'STARTER'}</span>
             </div>
-            <button onClick={() => setPagina('planos')} style={{ width:'100%', padding:'7px 0', background:'transparent', color:C.yellow, border:`1px solid ${C.yellow}40`, borderRadius:6, fontSize:12, cursor:'pointer', marginBottom:6 }}>
+            <button onClick={() => setPagina('planos')} style={{ width:'100%', padding:'7px 0', background:'transparent', color:'#d4a017', border:`1px solid #d4a01740`, borderRadius:6, fontSize:12, cursor:'pointer', marginBottom:6 }}>
               ⬆ Fazer upgrade
             </button>
             <button onClick={onLogout} style={{ width:'100%', padding:'7px 0', background:'transparent', color:C.muted, border:`1px solid ${C.border}`, borderRadius:6, fontSize:12, cursor:'pointer' }}>Sair</button>
@@ -203,7 +203,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
       {/* ── CONTEÚDO PRINCIPAL ── */}
       <div style={{ flex:1, overflow:'auto', paddingBottom: isMobile ? 70 : 0 }}>
         {pagina === 'visao' && <VisaoGeral diagnostico={diagnostico} loading={loading} onGerar={gerarDiagnostico} mlAuth={mlAuth} nivel_labels={nivel_labels} usuario={usuario} setPagina={setPagina} isMobile={isMobile} />}
-        {pagina === 'historico' && <Historico mlAuth={mlAuth} usuario={usuario} isMobile={isMobile} />}
+        {pagina === 'historico' && (isPro(usuario) ? <Historico mlAuth={mlAuth} usuario={usuario} isMobile={isMobile} /> : <BloqueadoPro setPagina={setPagina} recurso="Histórico de evolução do score" />)}
         {pagina === 'analisar' && (isPro(usuario) ? <AnalisarProduto mlAuth={mlAuth} usuario={usuario} setPagina={setPagina} isMobile={isMobile} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de produto por MLB" />)}
         {pagina === 'promocoes' && (isPro(usuario) ? <Promocoes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Módulo de promoções" />)}
         {pagina === 'calculadora' && <Calculadora isMobile={isMobile} />}
