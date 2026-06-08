@@ -9,7 +9,7 @@ const C = {
 
 const CLIENT_ID = '8361153242610469';
 const REDIRECT_URI = 'https://raioxseller-frontend.vercel.app/callback';
-const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=offline_access%20questions`;
+const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=questions`;
 
 export default function Onboarding({ usuario, onMlAuth, onPular }) {
   const [passo, setPasso] = useState(1);

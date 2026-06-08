@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ml } from '../api';
 
 const C = {
@@ -9,19 +9,22 @@ const C = {
 export default function Callback({ usuario, onMlAuth }) {
   const [status, setStatus] = useState('conectando');
   const [erro, setErro] = useState('');
+  const chamado = useRef(false); // evita dupla chamada do React StrictMode
 
   useEffect(() => {
+    if (chamado.current) return;
+    chamado.current = true;
+
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
-    
+
     if (!code) {
       setStatus('erro');
-      setErro('Código de autorização não encontrado.');
+      setErro('Código de autorização não encontrado na URL.');
       return;
     }
 
     if (!usuario) {
-      // Salva o código e redireciona para login
       localStorage.setItem('ml_pending_code', code);
       window.location.href = '/';
       return;
@@ -35,12 +38,12 @@ export default function Callback({ usuario, onMlAuth }) {
           setTimeout(() => { window.location.href = '/'; }, 2000);
         } else {
           setStatus('erro');
-          setErro(r.detail || 'Erro ao conectar conta ML.');
+          setErro(r.detail || 'Erro ao conectar conta ML. Tente autorizar novamente.');
         }
       })
       .catch(() => {
         setStatus('erro');
-        setErro('Erro de conexão. Tente novamente.');
+        setErro('Erro de conexão com o servidor. Tente novamente.');
       });
   }, []);
 
@@ -53,14 +56,19 @@ export default function Callback({ usuario, onMlAuth }) {
         <div style={{ fontSize:18, fontWeight:700, color:C.text, marginBottom:8 }}>
           {status === 'conectando' ? 'Conectando sua conta...' : status === 'sucesso' ? 'Conta conectada!' : 'Erro ao conectar'}
         </div>
-        <div style={{ fontSize:13, color:C.muted }}>
+        <div style={{ fontSize:13, color:C.muted, marginBottom: status === 'erro' ? 16 : 0 }}>
           {status === 'conectando' ? 'Aguarde enquanto autorizamos sua conta do Mercado Livre.' :
            status === 'sucesso' ? 'Redirecionando para o dashboard...' : erro}
         </div>
         {status === 'erro' && (
-          <button onClick={() => window.location.href='/'} style={{ marginTop:20, padding:'10px 24px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:13, cursor:'pointer' }}>
-            Voltar ao início
-          </button>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <button onClick={() => window.location.href='/'} style={{ padding:'10px 24px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:13, cursor:'pointer' }}>
+              Voltar ao início
+            </button>
+            <div style={{ fontSize:11, color:'#444' }}>
+              O código do ML expira em poucos minutos. Se o erro persistir, tente autorizar novamente.
+            </div>
+          </div>
         )}
       </div>
     </div>

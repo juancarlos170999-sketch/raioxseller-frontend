@@ -63,7 +63,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('onboarding_done') && !mlAuth);
   const isMobile = useIsMobile();
 
-  const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=offline_access%20questions`;
+  const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=questions`;
   const planoLabel = { starter:'LÍDER', pro:'LÍDER GOLD', agencia:'LÍDER PLATINUM', iniciante:'LÍDER' };
   const planoCor = { starter:C.blue, pro:'#d4a017', agencia:'#a8b8c8', iniciante:C.blue };
 
