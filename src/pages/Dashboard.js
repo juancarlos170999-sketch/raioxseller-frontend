@@ -104,7 +104,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
 
   const navItems = [
     { id:'visao', label:'Visão geral', icon:'◉', secao:'ANÁLISE' },
-    { id:'historico', label:'Histórico', icon:'📈' },
+    { id:'historico', label:'Histórico', icon:'📈', pro:true },
     { id:'analisar', label:'Analisar produto', icon:'⬡', pro:true },
     { id:'promocoes', label:'Promoções', icon:'🏷', pro:true },
     { id:'calculadora', label:'Calculadora', icon:'⊞', secao:'FERRAMENTAS' },
@@ -114,7 +114,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   // Bottom nav mobile: só 5 itens principais
   const mobileNavItems = [
     { id:'visao', label:'Início', icon:'◉' },
-    { id:'historico', label:'Histórico', icon:'📈' },
+    { id:'historico', label:'Histórico', icon:'📈', pro:true },
     { id:'calculadora', label:'Calc', icon:'⊞' },
     { id:'plano', label:'Plano', icon:'☑' },
     { id:'_menu', label:'Mais', icon:'☰' },
@@ -150,7 +150,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
                   borderLeft: `2px solid ${pagina===item.id ? C.green : 'transparent'}`
                 }}>
                   <span style={{ display:'flex', alignItems:'center', gap:8 }}><span>{item.icon}</span>{item.label}</span>
-                  {item.pro && !isPro(usuario) && <span style={{ fontSize:9, background:C.yellow, color:'#fff', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>PRO</span>}
+                  {item.pro && !isPro(usuario) && <span style={{ fontSize:9, background:'#d4a017', color:'#fff', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>GOLD</span>}
                 </div>
               </div>
             ))}
