@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { pagamento } from '../api';
 
 const C = {
@@ -60,6 +60,12 @@ export default function Planos({ usuario, onVoltar, onAtualizarUsuario }) {
   const [erro, setErro] = useState('');
   const [cancelando, setCancelando] = useState(false);
   const [confirmaCancelamento, setConfirmaCancelamento] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
 
   const planoAtual = usuario.plano;
   const temPlano = ['pro', 'agencia'].includes(planoAtual);
@@ -99,7 +105,7 @@ export default function Planos({ usuario, onVoltar, onAtualizarUsuario }) {
   };
 
   return (
-    <div style={{ padding:24, fontFamily:'Inter, sans-serif' }}>
+    <div style={{ padding: isMobile ? 16 : 24, fontFamily:'Inter, sans-serif' }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
         <button onClick={onVoltar} style={{ background:'transparent', border:'none', color:C.muted, cursor:'pointer', fontSize:13 }}>← Voltar</button>
       </div>
@@ -110,7 +116,7 @@ export default function Planos({ usuario, onVoltar, onAtualizarUsuario }) {
 
       {erro && <div style={{ background:'#2d1b1b', border:'1px solid #e52b2b40', borderRadius:8, padding:12, color:'#f09575', fontSize:13, marginBottom:16, textAlign:'center' }}>{erro}</div>}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, maxWidth:900, margin:'0 auto' }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:16, maxWidth:900, margin:'0 auto' }}>
         {PLANOS.map(plano => (
           <div key={plano.id} style={{
             background: C.card,
