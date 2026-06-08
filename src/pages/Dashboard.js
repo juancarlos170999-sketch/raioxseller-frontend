@@ -63,7 +63,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('onboarding_done') && !mlAuth);
   const isMobile = useIsMobile();
 
-  const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+  const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=offline_access%20questions`;
   const planoLabel = { starter:'STARTER', pro:'PRO', agencia:'AGÊNCIA', iniciante:'STARTER' };
   const planoCor = { starter:C.blue, pro:C.yellow, agencia:C.green, iniciante:C.blue };
 
@@ -82,7 +82,19 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
     if (!mlAuth) return;
     setLoading(true);
     try {
-      const r = await ml.diagnostico(mlAuth.ml_user_id, mlAuth.access_token, usuario.id, mlAuth.conta_ml_id || '');
+      let token = mlAuth.access_token;
+      let r = await ml.diagnostico(mlAuth.ml_user_id, token, usuario.id, mlAuth.conta_ml_id || '');
+      // Se retornar erro de autenticação, tenta renovar o token automaticamente
+      if (r.detail && (r.detail.includes('401') || r.detail.includes('token') || r.detail.includes('expired'))) {
+        const refreshed = await ml.refresh(mlAuth.conta_ml_id);
+        if (refreshed.success) {
+          token = refreshed.access_token;
+          const mlAuthAtualizado = { ...mlAuth, access_token: token };
+          localStorage.setItem('ml_auth', JSON.stringify(mlAuthAtualizado));
+          onMlAuth(mlAuthAtualizado);
+          r = await ml.diagnostico(mlAuth.ml_user_id, token, usuario.id, mlAuth.conta_ml_id || '');
+        }
+      }
       setDiagnostico(r);
     } catch { alert('Erro ao gerar diagnóstico.'); }
     setLoading(false);

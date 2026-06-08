@@ -18,6 +18,11 @@ export const ml = {
     body: JSON.stringify({code, usuario_id})
   }).then(r => r.json()),
 
+  refresh: (conta_ml_id) => fetch(`${API}/ml/refresh`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({conta_ml_id})
+  }).then(r => r.json()),
+
   diagnostico: (user_id, token, usuario_id, conta_ml_id) =>
     fetch(`${API}/diagnostico/${user_id}?token=${encodeURIComponent(token)}&usuario_id=${usuario_id}&conta_ml_id=${conta_ml_id}`).then(r => r.json()),
 
