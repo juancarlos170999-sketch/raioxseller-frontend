@@ -3,6 +3,8 @@ import { ml, pagamento } from '../api';
 import Planos from './Planos';
 import Concorrentes from './Concorrentes';
 import Promocoes from './Promocoes';
+import Onboarding from './Onboarding';
+import Historico from './Historico';
 
 const C = {
   bg:'#0a0a12', sidebar:'#0f0f1a', card:'#13131f', border:'#1e1e2e',
@@ -59,6 +61,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [code, setCode] = useState('');
   const [conectando, setConectando] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('onboarding_done') && !mlAuth);
   const isMobile = useIsMobile();
 
   const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
@@ -90,6 +93,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
 
   const navItems = [
     { id:'visao', label:'Visão geral', icon:'◉', secao:'ANÁLISE' },
+    { id:'historico', label:'Histórico', icon:'📈' },
     { id:'analisar', label:'Analisar produto', icon:'⬡', pro:true },
     { id:'concorrentes', label:'Concorrentes', icon:'⊕', pro:true },
     { id:'promocoes', label:'Promoções', icon:'🏷', pro:true },
@@ -100,7 +104,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   // Bottom nav mobile: só 5 itens principais
   const mobileNavItems = [
     { id:'visao', label:'Início', icon:'◉' },
-    { id:'analisar', label:'Produto', icon:'⬡' },
+    { id:'historico', label:'Histórico', icon:'📈' },
     { id:'calculadora', label:'Calc', icon:'⊞' },
     { id:'plano', label:'Plano', icon:'☑' },
     { id:'_menu', label:'Mais', icon:'☰' },
@@ -189,6 +193,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
       {/* ── CONTEÚDO PRINCIPAL ── */}
       <div style={{ flex:1, overflow:'auto', paddingBottom: isMobile ? 70 : 0 }}>
         {pagina === 'visao' && <VisaoGeral diagnostico={diagnostico} loading={loading} onGerar={gerarDiagnostico} mlAuth={mlAuth} nivel_labels={nivel_labels} usuario={usuario} setPagina={setPagina} isMobile={isMobile} />}
+        {pagina === 'historico' && <Historico mlAuth={mlAuth} usuario={usuario} isMobile={isMobile} />}
         {pagina === 'analisar' && (isPro(usuario) ? <AnalisarProduto mlAuth={mlAuth} usuario={usuario} setPagina={setPagina} isMobile={isMobile} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de produto por MLB" />)}
         {pagina === 'concorrentes' && (isPro(usuario) ? <Concorrentes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de concorrentes" />)}
         {pagina === 'promocoes' && (isPro(usuario) ? <Promocoes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Módulo de promoções" />)}
@@ -196,6 +201,15 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} setPagina={setPagina} isMobile={isMobile} />}
         {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} onAtualizarUsuario={(u) => { localStorage.setItem('usuario', JSON.stringify(u)); window.location.reload(); }} />}
       </div>
+
+      {/* ── ONBOARDING ── */}
+      {showOnboarding && (
+        <Onboarding
+          usuario={usuario}
+          onMlAuth={(r) => { onMlAuth(r); }}
+          onPular={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); }}
+        />
+      )}
 
       {/* ── BOTTOM NAV MOBILE ── */}
       {isMobile && (
