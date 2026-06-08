@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ml, pagamento } from '../api';
 import Planos from './Planos';
-import Concorrentes from './Concorrentes';
 import Promocoes from './Promocoes';
 import Onboarding from './Onboarding';
 import Historico from './Historico';
@@ -95,7 +94,6 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
     { id:'visao', label:'Visão geral', icon:'◉', secao:'ANÁLISE' },
     { id:'historico', label:'Histórico', icon:'📈' },
     { id:'analisar', label:'Analisar produto', icon:'⬡', pro:true },
-    { id:'concorrentes', label:'Concorrentes', icon:'⊕', pro:true },
     { id:'promocoes', label:'Promoções', icon:'🏷', pro:true },
     { id:'calculadora', label:'Calculadora', icon:'⊞', secao:'FERRAMENTAS' },
     { id:'plano', label:'Plano de ação', icon:'☑' },
@@ -195,7 +193,6 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         {pagina === 'visao' && <VisaoGeral diagnostico={diagnostico} loading={loading} onGerar={gerarDiagnostico} mlAuth={mlAuth} nivel_labels={nivel_labels} usuario={usuario} setPagina={setPagina} isMobile={isMobile} />}
         {pagina === 'historico' && <Historico mlAuth={mlAuth} usuario={usuario} isMobile={isMobile} />}
         {pagina === 'analisar' && (isPro(usuario) ? <AnalisarProduto mlAuth={mlAuth} usuario={usuario} setPagina={setPagina} isMobile={isMobile} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de produto por MLB" />)}
-        {pagina === 'concorrentes' && (isPro(usuario) ? <Concorrentes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de concorrentes" />)}
         {pagina === 'promocoes' && (isPro(usuario) ? <Promocoes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Módulo de promoções" />)}
         {pagina === 'calculadora' && <Calculadora isMobile={isMobile} />}
         {pagina === 'plano' && <PlanoAcao diagnostico={diagnostico} setPagina={setPagina} isMobile={isMobile} />}
@@ -235,7 +232,6 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
             <div style={{ textAlign:'center', fontSize:12, color:C.muted, marginBottom:16 }}>Menu</div>
             {[
               { id:'promocoes', label:'Promoções', icon:'🏷', pro:true },
-              { id:'concorrentes', label:'Concorrentes', icon:'⊕', pro:true },
               { id:'planos', label:'Upgrade de plano', icon:'⬆' },
             ].map(item => (
               <div key={item.id} onClick={() => { setPagina(item.id); setMenuAberto(false); }}
