@@ -153,6 +153,7 @@ export default function AnalisarProdutos({ mlAuth, usuario, isMobile }) {
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [temDadosCampanha, setTemDadosCampanha] = useState(false);
   const [resumo, setResumo] = useState(null);
+  const [buscandoMLB, setBuscandoMLB] = useState(false);
 
   useEffect(() => {
     if (mlAuth?.access_token && mlAuth?.conta_ml_id) carregar();
@@ -169,6 +170,31 @@ export default function AnalisarProdutos({ mlAuth, usuario, isMobile }) {
     }
     setFiltrados(lista);
   }, [todos, busca, filtroCurva, filtroFull, filtroCampanha]);
+
+  const buscarPorMLB = async () => {
+    if (!busca.trim()) return;
+    const mlbF = busca.trim().toUpperCase().startsWith('MLB') ? busca.trim().toUpperCase() : `MLB${busca.trim()}`;
+    // Primeiro tenta achar na lista local
+    const encontrado = todos.find(p => p.id === mlbF);
+    if (encontrado) { setProdutoSelecionado(encontrado); return; }
+    // Se não achou, busca direto na API
+    setBuscandoMLB(true);
+    try {
+      const r = await fetch(`${API}/item/${mlbF}?token=${encodeURIComponent(mlAuth.access_token)}&user_id=${mlAuth.ml_user_id}`);
+      const data = await r.json();
+      if (data.item_id) {
+        // Cria um produto fake para o modal com os dados disponíveis
+        setProdutoSelecionado({
+          id: data.item_id, titulo: data.titulo, preco: data.preco,
+          thumbnail: '', curva: '?', receita_90d: 0, vendas_90d: data.vendas || 0,
+          em_full: false, em_campanha: false, sem_full: false, sem_campanha: false
+        });
+      } else {
+        alert('Produto não encontrado. Verifique o código MLB.');
+      }
+    } catch { alert('Erro ao buscar produto.'); }
+    setBuscandoMLB(false);
+  };
 
   const carregar = async () => {
     setLoading(true); setErro('');
@@ -231,10 +257,15 @@ export default function AnalisarProdutos({ mlAuth, usuario, isMobile }) {
       {/* Barra de busca e filtros */}
       <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
         <input
-          value={busca} onChange={e => setBusca(e.target.value)}
-          placeholder="🔍 Buscar por nome ou MLB..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && buscarPorMLB()}
+          placeholder="🔍 Buscar por nome ou MLB... (Enter para buscar)"
           style={{ flex:1, minWidth:200, padding:'9px 12px', borderRadius:8, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12 }}
         />
+        <button onClick={buscarPorMLB} disabled={buscandoMLB} style={{ padding:'9px 14px', background:C.green, color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer' }}>
+          {buscandoMLB ? '...' : '🔍 Buscar'}
+        </button>
         <select value={filtroCurva} onChange={e => setFiltroCurva(e.target.value)} style={{ padding:'9px 10px', borderRadius:8, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, cursor:'pointer' }}>
           <option value="todos">Todas as curvas</option>
           <option value="A">Curva A</option>
