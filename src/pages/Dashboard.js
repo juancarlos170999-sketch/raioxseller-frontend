@@ -4,6 +4,7 @@ import Planos from './Planos';
 import Promocoes from './Promocoes';
 import Onboarding from './Onboarding';
 import Historico from './Historico';
+import CurvaABC from './CurvaABC';
 
 const C = {
   bg:'#0a0a12', sidebar:'#0f0f1a', card:'#13131f', border:'#1e1e2e',
@@ -170,6 +171,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const navItems = [
     { id:'visao', label:'Visão geral', icon:'◉', secao:'ANÁLISE' },
     { id:'historico', label:'Histórico', icon:'📈', pro:true },
+    { id:'curva-abc', label:'Curva ABC', icon:'📊', pro:true },
     { id:'analisar', label:'Analisar produto', icon:'⬡', pro:true },
     { id:'promocoes', label:'Promoções', icon:'🏷', pro:true },
     { id:'calculadora', label:'Calculadora', icon:'⊞', secao:'FERRAMENTAS' },
@@ -269,6 +271,7 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
       <div style={{ flex:1, overflow:'auto', paddingBottom: isMobile ? 70 : 0 }}>
         {pagina === 'visao' && <VisaoGeral diagnostico={diagnostico} loading={loading} onGerar={gerarDiagnostico} mlAuth={mlAuth} nivel_labels={nivel_labels} usuario={usuario} setPagina={setPagina} isMobile={isMobile} />}
         {pagina === 'historico' && (isPro(usuario) ? <Historico mlAuth={mlAuth} usuario={usuario} isMobile={isMobile} /> : <BloqueadoPro setPagina={setPagina} recurso="Histórico de evolução do score" />)}
+        {pagina === 'curva-abc' && (isPro(usuario) ? <CurvaABC mlAuth={mlAuth} usuario={usuario} isMobile={isMobile} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de Curva ABC" />)}
         {pagina === 'analisar' && (isPro(usuario) ? <AnalisarProduto mlAuth={mlAuth} usuario={usuario} setPagina={setPagina} isMobile={isMobile} /> : <BloqueadoPro setPagina={setPagina} recurso="Análise de produto por MLB" />)}
         {pagina === 'promocoes' && (isPro(usuario) ? <Promocoes mlAuth={mlAuth} /> : <BloqueadoPro setPagina={setPagina} recurso="Módulo de promoções" />)}
         {pagina === 'calculadora' && <Calculadora isMobile={isMobile} />}
