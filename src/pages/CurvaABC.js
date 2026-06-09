@@ -177,12 +177,36 @@ export default function CurvaABC({ mlAuth, usuario, isMobile }) {
         <div style={{ fontSize:12, color:C.muted }}>Últimos 90 dias · {fmtInt(resumo?.total_itens)} produtos ativos</div>
       </div>
 
-      {/* Cards de resumo */}
-      <div style={{ display:'flex', gap:10, marginBottom:20, flexWrap:'wrap' }}>
-        <CardResumo label="Receita Total 90d" valor={`R$${fmt(resumo?.receita_total_90d)}`} cor={C.green} />
-        <CardResumo label="Curva A" valor={resumo?.qtd_a} cor={C.green} sub="~80% da receita" />
-        <CardResumo label="Curva B" valor={resumo?.qtd_b} cor={C.yellow} sub="15% da receita" />
-        <CardResumo label="Curva C" valor={resumo?.qtd_c} cor={C.muted} sub="5% da receita" />
+      {/* Explicação do critério (baseado no ML) */}
+      <div style={{ background:'#0f1520', border:`1px solid ${C.blue}30`, borderRadius:10, padding:'10px 16px', marginBottom:16, fontSize:11, color:C.muted, lineHeight:1.6 }}>
+        📖 <strong style={{ color:C.text }}>Classificação baseada no critério do Mercado Livre:</strong> Curva A = produtos que geram ~80% da receita (prioridade máxima) · Curva B = 15% da receita · Curva C = 5% da receita. Período: últimos 90 dias.
+      </div>
+
+      {/* Cards clicáveis para selecionar curva */}
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap:10, marginBottom:20 }}>
+        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'14px 16px' }}>
+          <div style={{ fontSize:10, color:C.muted, marginBottom:4 }}>Receita Total 90d</div>
+          <div style={{ fontSize:20, fontWeight:800, color:C.green }}>R${fmt(resumo?.receita_total_90d)}</div>
+        </div>
+        {[
+          { curva:'A', qtd: resumo?.qtd_a, cor:C.green, sub:'~80% da receita', desc:'Produtos prioritários' },
+          { curva:'B', qtd: resumo?.qtd_b, cor:C.yellow, sub:'~15% da receita', desc:'Potencial crescimento' },
+          { curva:'C', qtd: resumo?.qtd_c, cor:C.muted, sub:'~5% da receita', desc:'Baixo giro' },
+        ].map(({ curva, qtd, cor, sub, desc }) => (
+          <button key={curva} onClick={() => setAba(curva)} style={{
+            background: aba === curva ? cor+'20' : C.card,
+            border: `2px solid ${aba === curva ? cor : C.border}`,
+            borderRadius:12, padding:'14px 16px', cursor:'pointer', textAlign:'left',
+            transition:'all 0.15s', boxShadow: aba === curva ? `0 0 12px ${cor}30` : 'none'
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+              <span style={{ background:cor, color:'#fff', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:800 }}>CURVA {curva}</span>
+              {aba === curva && <span style={{ fontSize:10, color:cor }}>● selecionada</span>}
+            </div>
+            <div style={{ fontSize:22, fontWeight:800, color: aba === curva ? cor : C.text }}>{qtd} <span style={{ fontSize:12, fontWeight:400, color:C.muted }}>produtos</span></div>
+            <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>{sub} · {desc}</div>
+          </button>
+        ))}
       </div>
 
       {/* Alertas Curva A */}
@@ -202,19 +226,12 @@ export default function CurvaABC({ mlAuth, usuario, isMobile }) {
         </div>
       )}
 
-      {/* Abas */}
-      <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-        {['A','B','C'].map(c => (
-          <button key={c} onClick={() => setAba(c)} style={{
-            padding:'8px 20px', borderRadius:8, fontWeight:700, fontSize:12, cursor:'pointer', border:'none',
-            background: aba === c ? CURVA_COR[c] : C.card,
-            color: aba === c ? '#fff' : C.muted,
-            border: `1px solid ${aba === c ? CURVA_COR[c] : C.border}`
-          }}>
-            Curva {c} <span style={{ fontWeight:400 }}>({itensPorAba[c]?.length})</span>
-          </button>
-        ))}
-        <button onClick={carregar} style={{ marginLeft:'auto', padding:'8px 14px', background:'transparent', border:`1px solid ${C.border}`, borderRadius:8, color:C.muted, fontSize:11, cursor:'pointer' }}>
+      {/* Título da curva selecionada + botão atualizar */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+        <div style={{ fontSize:14, fontWeight:700, color: CURVA_COR[aba] }}>
+          Produtos Curva {aba} — {itensPorAba[aba]?.length} itens
+        </div>
+        <button onClick={carregar} style={{ padding:'7px 14px', background:'transparent', border:`1px solid ${C.border}`, borderRadius:8, color:C.muted, fontSize:11, cursor:'pointer' }}>
           🔄 Atualizar
         </button>
       </div>
