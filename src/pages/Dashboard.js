@@ -64,6 +64,12 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [showOnboarding, setShowOnboarding] = useState(
     !localStorage.getItem('onboarding_done') && (!mlAuth || !!localStorage.getItem('onboarding_pending'))
   );
+  // Quando mlAuth carrega depois (async), verifica se estava no meio do onboarding
+  useEffect(() => {
+    if (mlAuth && localStorage.getItem('onboarding_pending') && !localStorage.getItem('onboarding_done')) {
+      setShowOnboarding(true);
+    }
+  }, [mlAuth]);
   const isMobile = useIsMobile();
 
   const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=questions`;
