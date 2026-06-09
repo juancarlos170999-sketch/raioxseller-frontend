@@ -28,6 +28,57 @@ function corScore(s) { return s < 60 ? C.red : s < 80 ? C.yellow : C.green; }
 function isPro(u) { return ['pro','agencia'].includes(u?.plano); }
 function fmt(n) { return (n||0).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0}); }
 
+function ConectarMLModal({ usuario, authUrl, onMlAuth }) {
+  const [code, setCode] = useState('');
+  const [conectando, setConectando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const conectar = async () => {
+    if (!code.trim()) { setErro('Cole o código antes de continuar.'); return; }
+    setConectando(true); setErro('');
+    try {
+      const r = await ml.connect(code.trim(), usuario.id);
+      if (r.success) { onMlAuth(r); }
+      else { setErro('Código inválido ou expirado. Tente novamente.'); }
+    } catch { setErro('Erro de conexão. Tente novamente.'); }
+    setConectando(false);
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'#00000095', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:20, width:'100%', maxWidth:440, padding:'32px 28px' }}>
+        <div style={{ fontSize:36, marginBottom:12 }}>🔗</div>
+        <div style={{ fontSize:20, fontWeight:700, color:C.text, marginBottom:6 }}>Conecte sua conta Mercado Livre</div>
+        <div style={{ fontSize:13, color:C.muted, lineHeight:1.6, marginBottom:24 }}>
+          Para começar, autorize o acesso à sua conta. Clique no botão abaixo e depois cole o código gerado.
+        </div>
+        <button onClick={() => { localStorage.setItem('onboarding_pending','1'); window.location.href = authUrl; }} style={{
+          display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%',
+          background:'#ffe600', color:'#333', padding:'13px 0', borderRadius:10,
+          fontWeight:700, fontSize:13, border:'none', cursor:'pointer', marginBottom:16
+        }}>
+          <span style={{ fontSize:20 }}>🛒</span> Autorizar no Mercado Livre
+        </button>
+        <div style={{ fontSize:11, color:C.muted, textAlign:'center', marginBottom:10 }}>
+          Após autorizar, copie o código que aparece e cole abaixo
+        </div>
+        <input
+          value={code} onChange={e => { setCode(e.target.value); setErro(''); }}
+          placeholder="Cole o código aqui (ex: TG-12345678-...)"
+          style={{ width:'100%', padding:'11px 13px', borderRadius:8, border:`1px solid ${erro ? C.red : C.border}`, background:C.input, color:C.text, fontSize:13, boxSizing:'border-box', marginBottom:8 }}
+        />
+        {erro && <div style={{ fontSize:12, color:'#f09575', marginBottom:8 }}>{erro}</div>}
+        <button onClick={conectar} disabled={conectando} style={{
+          width:'100%', padding:'13px 0', background: conectando ? C.border : C.green,
+          color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer'
+        }}>
+          {conectando ? '⏳ Conectando...' : '✅ Conectar conta'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BloqueadoPro({ setPagina, recurso }) {
   return (
     <div style={{ padding:60, textAlign:'center' }}>
@@ -60,14 +111,19 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [code, setCode] = useState('');
   const [conectando, setConectando] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
-  // Mostra onboarding se: nunca completou OU voltou do OAuth (onboarding_pending)
-  const [showOnboarding, setShowOnboarding] = useState(
-    !localStorage.getItem('onboarding_done') && (!mlAuth || !!localStorage.getItem('onboarding_pending'))
-  );
-  // Quando mlAuth carrega depois (async), verifica se estava no meio do onboarding
+  // Conectar ML: aparece quando não tem conta conectada
+  const [showConectarML, setShowConectarML] = useState(!mlAuth);
+  // Onboarding de boas-vindas: aparece após conectar ML pela primeira vez
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  // Quando mlAuth conecta (após OAuth redirect), mostra onboarding se primeira vez
   useEffect(() => {
-    if (mlAuth && localStorage.getItem('onboarding_pending') && !localStorage.getItem('onboarding_done')) {
-      setShowOnboarding(true);
+    if (mlAuth) {
+      setShowConectarML(false);
+      // Veio do OAuth redirect (onboarding_pending) → mostra onboarding
+      if (localStorage.getItem('onboarding_pending') && !localStorage.getItem('onboarding_done')) {
+        setShowOnboarding(true);
+        localStorage.removeItem('onboarding_pending');
+      }
     }
   }, [mlAuth]);
   const isMobile = useIsMobile();
@@ -220,15 +276,26 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
         {pagina === 'planos' && <Planos usuario={usuario} onVoltar={() => setPagina('visao')} onAtualizarUsuario={(u) => { localStorage.setItem('usuario', JSON.stringify(u)); window.location.reload(); }} />}
       </div>
 
-      {/* ── ONBOARDING ── */}
-      {showOnboarding && (
+      {/* ── CONECTAR ML (bloqueante, aparece antes do onboarding) ── */}
+      {showConectarML && (
+        <ConectarMLModal
+          usuario={usuario}
+          authUrl={authUrl}
+          onMlAuth={(r) => {
+            onMlAuth(r);
+            setShowConectarML(false);
+            if (!localStorage.getItem('onboarding_done')) setShowOnboarding(true);
+          }}
+        />
+      )}
+
+      {/* ── ONBOARDING (boas-vindas, após conectar ML) ── */}
+      {showOnboarding && !showConectarML && (
         <Onboarding
           usuario={usuario}
-          mlAuthInicial={localStorage.getItem('onboarding_pending') ? mlAuth : null}
-          onMlAuth={(r) => { onMlAuth(r); }}
+          mlAuth={mlAuth}
           onPular={() => {
             localStorage.setItem('onboarding_done', '1');
-            localStorage.removeItem('onboarding_pending');
             setShowOnboarding(false);
           }}
         />
