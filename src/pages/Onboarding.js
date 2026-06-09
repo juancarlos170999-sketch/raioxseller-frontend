@@ -11,12 +11,13 @@ const CLIENT_ID = '8361153242610469';
 const REDIRECT_URI = 'https://raioxseller-frontend.vercel.app/callback';
 const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=questions`;
 
-export default function Onboarding({ usuario, onMlAuth, onPular }) {
-  const [passo, setPasso] = useState(1);
+export default function Onboarding({ usuario, onMlAuth, onPular, mlAuthInicial }) {
+  // Se voltou do OAuth com mlAuth já conectado, vai direto ao passo 3
+  const [passo, setPasso] = useState(mlAuthInicial ? 3 : 1);
   const [code, setCode] = useState('');
   const [conectando, setConectando] = useState(false);
   const [erro, setErro] = useState('');
-  const [mlAuthLocal, setMlAuthLocal] = useState(null);
+  const [mlAuthLocal, setMlAuthLocal] = useState(mlAuthInicial || null);
 
   const conectarML = async () => {
     if (!code.trim()) { setErro('Cole o código antes de continuar.'); return; }
@@ -109,7 +110,7 @@ export default function Onboarding({ usuario, onMlAuth, onPular }) {
                 Clique no botão abaixo para autorizar o acesso. O ML vai gerar um código — cole ele aqui.
               </div>
 
-              <a href={authUrl} target="_blank" rel="noreferrer" style={{
+              <a href={authUrl} onClick={() => localStorage.setItem('onboarding_pending', '1')} style={{
                 display:'flex', alignItems:'center', justifyContent:'center', gap:8,
                 background:'#ffe600', color:'#333', padding:'12px 0', borderRadius:10,
                 fontWeight:700, fontSize:13, textDecoration:'none', marginBottom:16

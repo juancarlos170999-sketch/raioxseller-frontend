@@ -60,7 +60,10 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
   const [code, setCode] = useState('');
   const [conectando, setConectando] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(!localStorage.getItem('onboarding_done') && !mlAuth);
+  // Mostra onboarding se: nunca completou OU voltou do OAuth (onboarding_pending)
+  const [showOnboarding, setShowOnboarding] = useState(
+    !localStorage.getItem('onboarding_done') && (!mlAuth || !!localStorage.getItem('onboarding_pending'))
+  );
   const isMobile = useIsMobile();
 
   const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=questions`;
@@ -215,8 +218,13 @@ export default function Dashboard({ usuario, mlAuth, onMlAuth, onLogout }) {
       {showOnboarding && (
         <Onboarding
           usuario={usuario}
+          mlAuthInicial={localStorage.getItem('onboarding_pending') ? mlAuth : null}
           onMlAuth={(r) => { onMlAuth(r); }}
-          onPular={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); }}
+          onPular={() => {
+            localStorage.setItem('onboarding_done', '1');
+            localStorage.removeItem('onboarding_pending');
+            setShowOnboarding(false);
+          }}
         />
       )}
 
