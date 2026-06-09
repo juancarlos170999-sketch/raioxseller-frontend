@@ -110,13 +110,16 @@ export default function Onboarding({ usuario, onMlAuth, onPular, mlAuthInicial }
                 Clique no botão abaixo para autorizar o acesso. O ML vai gerar um código — cole ele aqui.
               </div>
 
-              <a href={authUrl} onClick={() => localStorage.setItem('onboarding_pending', '1')} style={{
+              <button onClick={() => {
+                localStorage.setItem('onboarding_pending', '1');
+                window.location.href = authUrl;
+              }} style={{
                 display:'flex', alignItems:'center', justifyContent:'center', gap:8,
                 background:'#ffe600', color:'#333', padding:'12px 0', borderRadius:10,
-                fontWeight:700, fontSize:13, textDecoration:'none', marginBottom:16
+                fontWeight:700, fontSize:13, border:'none', cursor:'pointer', width:'100%', marginBottom:16
               }}>
                 <span style={{ fontSize:20 }}>🛒</span> Autorizar no Mercado Livre
-              </a>
+              </button>
 
               <div style={{ fontSize:11, color:C.muted, textAlign:'center', marginBottom:12 }}>
                 Após autorizar, copie o código que aparece e cole abaixo
