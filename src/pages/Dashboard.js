@@ -777,125 +777,126 @@ function PrecificacaoProduto({ item, isMobile }) {
 }
 
 function Calculadora({ isMobile }) {
-  const [aba, setAba] = useState('precificacao');
-  const inputStyle = { width:'100%', padding:'8px', borderRadius:6, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:12, boxSizing:'border-box' };
-
-  // --- Precificação ---
   const [cmv, setCmv] = useState(150);
-  const [tipo, setTipo] = useState(0.17);
+  const [comissao, setComissao] = useState(0.17);
   const [frete, setFrete] = useState(15);
   const [imposto, setImposto] = useState(0.10);
   const [margem, setMargem] = useState(20);
-  const [precoAtual, setPrecoAtual] = useState(0);
-  const total = tipo + imposto + margem/100;
-  const pi = total < 1 ? (cmv+frete)/(1-total) : 0;
-  const com = pi*tipo; const imp = pi*imposto;
-  const lucro = pi - cmv - com - frete - imp;
-  const ma = precoAtual > 0 ? (precoAtual-cmv-precoAtual*tipo-frete-precoAtual*imposto)/precoAtual*100 : null;
+  const [desconto, setDesconto] = useState(0);
 
-  // --- Promoção ---
-  const [pPreco, setPPreco] = useState(100);
-  const [pDesconto, setPDesconto] = useState(20);
-  const [pCmv, setPCmv] = useState(50);
-  const [pComissao, setPComissao] = useState(0.17);
-  const [pFrete, setPFrete] = useState(15);
-  const [pImposto, setPImposto] = useState(0.10);
-  const precoPromo = pPreco * (1 - pDesconto/100);
-  const margemNormal = ((pPreco - pCmv - pPreco*pComissao - pFrete - pPreco*pImposto) / pPreco * 100);
-  const margemPromo = ((precoPromo - pCmv - precoPromo*pComissao - pFrete - precoPromo*pImposto) / precoPromo * 100);
-  const lucroPorVenda = precoPromo - pCmv - precoPromo*pComissao - pFrete - precoPromo*pImposto;
-  const viavel = lucroPorVenda > 0;
-  const vendasParaCompensarDesconto = lucroPorVenda > 0 ? Math.ceil((pPreco * pDesconto/100) / lucroPorVenda) : null;
+  const inputStyle = { width:'100%', padding:'9px 10px', borderRadius:8, border:`1px solid ${C.border}`, background:C.input, color:C.text, fontSize:13, boxSizing:'border-box' };
+  const labelStyle = { fontSize:11, color:C.muted, display:'block', marginBottom:4 };
+
+  // Preço ideal (sem desconto)
+  const total = comissao + imposto + margem/100;
+  const preco = total < 1 ? (cmv + frete) / (1 - total) : 0;
+  const comVal = preco * comissao;
+  const impVal = preco * imposto;
+  const lucro = preco - cmv - comVal - frete - impVal;
+
+  // Com desconto
+  const precoPromo = desconto > 0 ? preco * (1 - desconto/100) : 0;
+  const lucroPromo = precoPromo > 0 ? precoPromo - cmv - precoPromo*comissao - frete - precoPromo*imposto : 0;
+  const margemPromo = precoPromo > 0 ? (lucroPromo / precoPromo * 100) : 0;
+  const viavel = lucroPromo > 0;
 
   return (
-    <div style={{ padding: isMobile ? 16 : 24, maxWidth:860, margin:'0 auto' }}>
+    <div style={{ padding: isMobile ? 16 : 24, maxWidth:820, margin:'0 auto' }}>
       <div style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>🧮 Calculadora</div>
-      <div style={{ fontSize:12, color:C.muted, marginBottom:18 }}>Precificação e simulação de promoções</div>
+      <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Precificação completa com todos os custos do ML</div>
 
-      {/* Abas */}
-      <div style={{ display:'flex', gap:0, borderBottom:`1px solid ${C.border}`, marginBottom:20 }}>
-        {[['precificacao','💰 Precificação'],['promocao','🏷 Promoção']].map(([id,label]) => (
-          <div key={id} onClick={() => setAba(id)} style={{ padding:'8px 18px', fontSize:13, cursor:'pointer', borderBottom:`2px solid ${aba===id?C.green:'transparent'}`, color:aba===id?C.green:C.muted, marginBottom:-1, fontWeight:aba===id?600:400 }}>{label}</div>
-        ))}
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:18 }}>
+
+        {/* Entradas */}
+        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
+          <div style={{ fontSize:13, fontWeight:600, color:C.text, marginBottom:14 }}>📥 Dados do produto</div>
+
+          <div style={{ marginBottom:12 }}>
+            <label style={labelStyle}>CMV — Custo do produto (R$)</label>
+            <input type="number" value={cmv} onChange={e=>setCmv(Number(e.target.value))} style={inputStyle} />
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={labelStyle}>Tipo de anúncio</label>
+            <select value={comissao} onChange={e=>setComissao(Number(e.target.value))} style={inputStyle}>
+              <option value={0.12}>Clássico (~12%)</option>
+              <option value={0.17}>Premium (~17%)</option>
+            </select>
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={labelStyle}>Frete</label>
+            <select value={frete} onChange={e=>setFrete(Number(e.target.value))} style={inputStyle}>
+              <option value={15}>Padrão (~R$15)</option>
+              <option value={0}>Full (R$0)</option>
+              <option value={8}>Flex (~R$8)</option>
+            </select>
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={labelStyle}>Regime fiscal</label>
+            <select value={imposto} onChange={e=>setImposto(Number(e.target.value))} style={inputStyle}>
+              <option value={0.06}>MEI (6%)</option>
+              <option value={0.10}>Simples Nacional (10%)</option>
+              <option value={0.15}>Lucro Presumido (15%)</option>
+            </select>
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={labelStyle}>Margem de lucro desejada (%)</label>
+            <input type="number" value={margem} onChange={e=>setMargem(Number(e.target.value))} style={inputStyle} />
+          </div>
+          <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:12, marginTop:4 }}>
+            <label style={labelStyle}>🏷 Desconto para promoção (%) — opcional</label>
+            <input type="number" value={desconto} onChange={e=>setDesconto(Number(e.target.value))} min={0} max={99} style={inputStyle} placeholder="0 = sem promoção" />
+          </div>
+        </div>
+
+        {/* Resultados */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+
+          {/* Preço ideal */}
+          <div style={{ background:'#0d2d1a', border:`1px solid ${C.green}40`, borderRadius:12, padding:18, textAlign:'center' }}>
+            <div style={{ fontSize:11, color:C.green, marginBottom:4 }}>Preço ideal para {margem}% de margem</div>
+            <div style={{ fontSize:40, fontWeight:900, color:C.green }}>R${preco.toFixed(2)}</div>
+          </div>
+
+          {/* Breakdown */}
+          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:16 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:C.muted, marginBottom:10 }}>Composição do preço</div>
+            {[
+              ['CMV', `R$${cmv.toFixed(2)}`, C.muted],
+              ['Comissão ML', `- R$${comVal.toFixed(2)}`, C.red],
+              ['Frete', `- R$${frete.toFixed(2)}`, C.red],
+              ['Impostos', `- R$${impVal.toFixed(2)}`, C.red],
+              ['Lucro líquido', `R$${lucro.toFixed(2)}`, lucro > 0 ? C.green : C.red],
+            ].map(([l,v,c]) => (
+              <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:`1px solid ${C.border}`, fontSize:13 }}>
+                <span style={{ color:C.muted }}>{l}</span>
+                <span style={{ fontWeight:600, color:c }}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Resultado promoção */}
+          {desconto > 0 && (
+            <div style={{ background: viavel ? '#0d2d1a' : '#2d1b1b', border:`1px solid ${viavel ? C.green : C.red}40`, borderRadius:12, padding:16 }}>
+              <div style={{ fontSize:12, fontWeight:600, color: viavel ? C.green : C.red, marginBottom:10 }}>
+                🏷 Com {desconto}% de desconto → R${precoPromo.toFixed(2)}
+              </div>
+              {[
+                ['Margem sem promoção', `${margem.toFixed(1)}%`, C.green],
+                ['Margem com promoção', `${margemPromo.toFixed(1)}%`, margemPromo > 0 ? C.yellow : C.red],
+                ['Lucro por venda', `R$${lucroPromo.toFixed(2)}`, lucroPromo > 0 ? C.green : C.red],
+              ].map(([l,v,c]) => (
+                <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:`1px solid ${C.border}20`, fontSize:12 }}>
+                  <span style={{ color:C.muted }}>{l}</span>
+                  <span style={{ fontWeight:600, color:c }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ marginTop:10, fontSize:12, color: viavel ? '#9FE1CB' : '#f09575' }}>
+                {viavel ? `✅ Promoção viável — lucro positivo por venda` : `⚠️ Promoção no prejuízo — reduza o desconto`}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      {aba === 'precificacao' && (
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:18 }}>
-          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18 }}>
-            {[['CMV',cmv,setCmv,'number'],['Tipo',tipo,setTipo,'select-tipo'],['Frete',frete,setFrete,'select-frete'],['Regime',imposto,setImposto,'select-imp'],['Margem (%)',margem,setMargem,'number'],['Preço atual (opcional)',precoAtual,setPrecoAtual,'number']].map(([l,v,s,t]) => (
-              <div key={l} style={{ marginBottom:10 }}>
-                <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>{l}</label>
-                {t==='number' && <input type="number" value={v} onChange={e=>s(Number(e.target.value))} style={inputStyle} />}
-                {t==='select-tipo' && <select value={v} onChange={e=>s(Number(e.target.value))} style={inputStyle}><option value={0.12}>Clássico (11-14%)</option><option value={0.17}>Premium (16-19%)</option></select>}
-                {t==='select-frete' && <select value={v} onChange={e=>s(Number(e.target.value))} style={inputStyle}><option value={15}>Padrão (~R$15)</option><option value={0}>Full (R$0)</option><option value={8}>Flex (~R$8)</option></select>}
-                {t==='select-imp' && <select value={v} onChange={e=>s(Number(e.target.value))} style={inputStyle}><option value={0.06}>MEI (6%)</option><option value={0.10}>Simples (10%)</option><option value={0.15}>Lucro Presumido (15%)</option></select>}
-              </div>
-            ))}
-          </div>
-          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18 }}>
-            <div style={{ background:`${C.green}15`, border:`1px solid ${C.green}40`, borderRadius:8, padding:16, textAlign:'center', marginBottom:14 }}>
-              <div style={{ fontSize:12, color:C.green, marginBottom:4 }}>Preço ideal para {margem}% de margem</div>
-              <div style={{ fontSize:36, fontWeight:900, color:C.green }}>R${pi.toFixed(2)}</div>
-            </div>
-            {[['Comissão ML',`- R$${com.toFixed(2)}`,C.red],['Frete',`- R$${frete.toFixed(2)}`,C.red],['Impostos',`- R$${imp.toFixed(2)}`,C.red],['Lucro líquido',`R$${lucro.toFixed(2)}`,lucro>0?C.green:C.red]].map(([l,v,c]) => (
-              <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'7px 0', borderBottom:`1px solid ${C.border}`, fontSize:13 }}>
-                <span style={{ color:C.muted }}>{l}</span><span style={{ fontWeight:600, color:c }}>{v}</span>
-              </div>
-            ))}
-            {ma !== null && <div style={{ marginTop:12, padding:10, background:`${ma>10?C.green:ma>0?C.yellow:C.red}15`, borderRadius:6, fontSize:12, color:ma>10?C.green:ma>0?C.yellow:C.red }}>{ma>10?`✅ Margem atual: ${ma.toFixed(1)}%`:ma>0?`🟡 Margem apertada: ${ma.toFixed(1)}%`:`⚠️ Vendendo no prejuízo: ${ma.toFixed(1)}%`}</div>}
-          </div>
-        </div>
-      )}
-
-      {aba === 'promocao' && (
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:18 }}>
-          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18 }}>
-            {[['Preço normal (R$)',pPreco,setPPreco],['Desconto (%)',pDesconto,setPDesconto],['CMV — custo do produto (R$)',pCmv,setPCmv],['Frete (R$)',pFrete,setPFrete]].map(([l,v,s]) => (
-              <div key={l} style={{ marginBottom:10 }}>
-                <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>{l}</label>
-                <input type="number" value={v} onChange={e=>s(Number(e.target.value))} style={inputStyle} />
-              </div>
-            ))}
-            <div style={{ marginBottom:10 }}>
-              <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>Tipo de anúncio</label>
-              <select value={pComissao} onChange={e=>setPComissao(Number(e.target.value))} style={inputStyle}>
-                <option value={0.12}>Clássico (12%)</option>
-                <option value={0.17}>Premium (17%)</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:'block', marginBottom:4 }}>Regime fiscal</label>
-              <select value={pImposto} onChange={e=>setPImposto(Number(e.target.value))} style={inputStyle}>
-                <option value={0.06}>MEI (6%)</option>
-                <option value={0.10}>Simples (10%)</option>
-                <option value={0.15}>Lucro Presumido (15%)</option>
-              </select>
-            </div>
-          </div>
-          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18 }}>
-            <div style={{ background: viavel ? '#0d2d1a' : '#2d1b1b', border:`1px solid ${viavel ? C.green : C.red}`, borderRadius:10, padding:16, marginBottom:12, textAlign:'center' }}>
-              <div style={{ fontSize:11, color: viavel ? C.green : C.red, marginBottom:4 }}>Preço promocional</div>
-              <div style={{ fontSize:36, fontWeight:900, color: viavel ? C.green : C.red }}>R${precoPromo.toFixed(2)}</div>
-              <div style={{ fontSize:12, color: viavel ? '#9FE1CB' : '#f09575', marginTop:4 }}>{viavel ? '✅ Promoção viável' : '⚠️ Promoção no prejuízo'}</div>
-            </div>
-            {[['Margem normal',`${margemNormal.toFixed(1)}%`,margemNormal>10?C.green:C.red],['Margem na promoção',`${margemPromo.toFixed(1)}%`,margemPromo>0?C.yellow:C.red],['Lucro por venda',`R$${lucroPorVenda.toFixed(2)}`,lucroPorVenda>0?C.green:C.red],['Queda na margem',`${(margemNormal-margemPromo).toFixed(1)}pp`,C.yellow]].map(([l,v,c]) => (
-              <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'7px 0', borderBottom:`1px solid ${C.border}`, fontSize:13 }}>
-                <span style={{ color:C.muted }}>{l}</span><span style={{ fontWeight:600, color:c }}>{v}</span>
-              </div>
-            ))}
-            {viavel && vendasParaCompensarDesconto && (
-              <div style={{ marginTop:12, background:'#0d1f35', border:`1px solid #3b82f640`, borderRadius:8, padding:12, fontSize:12, color:'#7ab3f0' }}>
-                💡 Precisa de pelo menos <strong>{vendasParaCompensarDesconto} vendas</strong> durante a promoção para compensar o desconto dado.
-              </div>
-            )}
-            {!viavel && (
-              <div style={{ marginTop:12, background:'#2d1b1b', border:`1px solid ${C.red}40`, borderRadius:8, padding:12, fontSize:12, color:'#f09575' }}>
-                ⚠️ Com esse desconto você vende no prejuízo. Reduza o desconto ou aumente o preço base.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
