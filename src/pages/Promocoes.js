@@ -133,7 +133,7 @@ export default function Promocoes({ mlAuth }) {
       <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Promoções ativas, candidatos e calculadora de desconto</div>
 
       <div style={{ display:'flex', gap:0, borderBottom:`1px solid ${C.border}`, marginBottom:20 }}>
-        {[['ativas','🏷 Promoções ativas'],['candidatos','💡 Oportunidades'],['calculadora','🧮 Calculadora']].map(([id,label]) => (
+        {[['ativas','🏷 Promoções ativas'],['candidatos','💡 Oportunidades']].map(([id,label]) => (
           <div key={id} onClick={()=>setAba(id)} style={{ padding:'8px 16px', fontSize:12, cursor:'pointer', borderBottom:`2px solid ${aba===id?C.green:'transparent'}`, color:aba===id?C.green:C.muted, marginBottom:-1 }}>{label}</div>
         ))}
       </div>
@@ -205,7 +205,6 @@ export default function Promocoes({ mlAuth }) {
         </div>
       )}
 
-      {aba === 'calculadora' && <CalculadoraPromocao />}
     </div>
   );
 }
